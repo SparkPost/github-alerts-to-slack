@@ -10,7 +10,25 @@ class GitHubClient {
         });
     }
 
-    _getQuery(owner, repo, limit=20) {
+    _getReposForOwnerAndTopicQuery(owner, topic) {
+      return `query { 
+        search(
+          query: "org:${owner} topic:${topic} archived:false",
+          type: REPOSITORY, last: 50
+        ) {
+          repositoryCount
+          edges {
+            node {
+              ... on Repository {
+                name
+              }
+            }
+          }
+        }
+      }`;
+    }
+
+    _getVulnerabilityAlertQuery(owner, repo, limit=40) {
         return `query {
             repository(owner:"${owner}", name:"${repo}") {
               vulnerabilityAlerts(last:${limit}) {
@@ -41,8 +59,19 @@ class GitHubClient {
           }`;
     }
 
+    async getRepos(owner, topic) {
+      const query = this._getReposForOwnerAndTopicQuery(owner, topic);
+      const results = await this.graphQLClient.request(query);
+      const repos = _.map(results.search.edges, 'node');
+      return _.map(repos, (repo) => {
+          return {
+              name: repo.name
+          }
+      });
+    }
+
     async getVulnerabilities(owner, repo) {
-        const query = this._getQuery(owner, repo);
+        const query = this._getVulnerabilityAlertQuery(owner, repo);
         const results = await this.graphQLClient.request(query);
         const alerts = _.map(results.repository.vulnerabilityAlerts.edges, 'node');
         return _.map(alerts, (alert) => {
@@ -51,7 +80,8 @@ class GitHubClient {
                 created_at: alert.createdAt,
                 severity: _.lowerCase(alert.securityVulnerability.severity),
                 description: alert.securityAdvisory.description,
-                package_name: alert.securityVulnerability.package.name
+                package_name: alert.securityVulnerability.package.name,
+                dismissed: !!alert.dismissReason
             }
         });
     }
