@@ -31,8 +31,8 @@ To run and post to a Slack channel:
 GITHUB_TOKEN=redacted SLACK_WEBHOOK=redacted POST_TO_SLACK=true GITHUB_QUERY="org:SparkPost archived:false" node index.js
 ```
 
-## Notes for future enhancements
+## Notes
 
 * This report includes alerts with "critical" or "high" severity, and excludes dismissed alerts.
 * This report limits to the first 50 repositories found, and first 50 alerts found.
-* Posting to Slack may fail if the payload is too load.
+* Posting to Slack may fail if the payload is too large.
