@@ -10,10 +10,10 @@ class GitHubClient {
         });
     }
 
-    _getReposForOwnerAndTopicQuery(owner, topic) {
+    _getReposQuery(searchQuery) {
       return `query { 
         search(
-          query: "org:${owner} topic:${topic} archived:false",
+          query: "${searchQuery}",
           type: REPOSITORY, last: 50
         ) {
           repositoryCount
@@ -21,6 +21,7 @@ class GitHubClient {
             node {
               ... on Repository {
                 name
+                nameWithOwner
               }
             }
           }
@@ -28,7 +29,7 @@ class GitHubClient {
       }`;
     }
 
-    _getVulnerabilityAlertQuery(owner, repo, limit=40) {
+    _getVulnerabilityAlertQuery(owner, repo, limit=50) {
         return `query {
             repository(owner:"${owner}", name:"${repo}") {
               vulnerabilityAlerts(last:${limit}) {
@@ -59,14 +60,13 @@ class GitHubClient {
           }`;
     }
 
-    async getRepos(owner, topic) {
-      const query = this._getReposForOwnerAndTopicQuery(owner, topic);
+    async getRepos(searchQuery) {
+      const query = this._getReposQuery(searchQuery);
       const results = await this.graphQLClient.request(query);
       const repos = _.map(results.search.edges, 'node');
       return _.map(repos, (repo) => {
-          return {
-              name: repo.name
-          }
+          const [org, name] = repo.nameWithOwner.split('/');
+          return { org, name };
       });
     }
 

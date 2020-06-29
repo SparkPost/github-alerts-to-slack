@@ -5,8 +5,7 @@ const Promise = require('bluebird');
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
-const org = process.env.GITHUB_ORGANIZATION;
-const topic = process.env.GITHUB_TOPIC;
+const searchQuery = process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
 const slackClient = new SlackClient(webhook);
@@ -16,19 +15,19 @@ async function doTheThing() {
         type: 'section',
         text: {
             type: 'mrkdwn',
-            text: `:wave: Report for organization: ${org}, topic: ${topic}\n\nThe following repositories have open vulnerability alerts and need your attention.`
+            text: `:wave: GitHub Security Alerts Report\n\nThe following repositories have open vulnerability alerts and need your attention.`
         }
     }];
 
-    const repos = await githubClient.getRepos(org, topic);
+    const repos = await githubClient.getRepos(searchQuery);
 
-    await Promise.map(repos, async ({name: repo}) => {
-        const alerts = await githubClient.getVulnerabilities(org, repo);
+    await Promise.map(repos, async ({name, org}) => {
+        const alerts = await githubClient.getVulnerabilities(org, name);
         const criticalAlerts = _.filter(alerts, { severity: 'critical', dismissed: false });
         const highAlerts = _.filter(alerts, { severity: 'high', dismissed: false });
         if (criticalAlerts.length > 0 || highAlerts.length > 0) {
             blocks.push({ type: 'divider' });
-            blocks = blocks.concat(formatAlertsForSlack({ org, repo, criticalAlerts, highAlerts }));
+            blocks = blocks.concat(formatAlertsForSlack({ org, name, criticalAlerts, highAlerts }));
         }
     });
 
@@ -37,7 +36,7 @@ async function doTheThing() {
         elements: [
             {
                 type: 'mrkdwn',
-                text: `Organization: ${org}, Topic: ${topic}`
+                text: `Query: ${searchQuery}`
             }
         ]
     });
@@ -49,7 +48,7 @@ async function doTheThing() {
     }
 }
 
-function formatAlertsForSlack({ org, repo, criticalAlerts, highAlerts }) {
+function formatAlertsForSlack({ org, name, criticalAlerts, highAlerts }) {
     const alertsSummary = [];
     if (criticalAlerts.length > 0) {
         alertsSummary.push(`${criticalAlerts.length} critical`);
@@ -62,7 +61,7 @@ function formatAlertsForSlack({ org, repo, criticalAlerts, highAlerts }) {
         type: 'section',
         text: {
             type: 'mrkdwn',
-            text: `*<https://github.com/${org}/${repo}|${org}/${repo}>*\n${alertsSummary.join(', ')}\n<https://github.com/${org}/${repo}/network/alerts|View all>`
+            text: `*<https://github.com/${org}/${name}|${org}/${name}>*\n${alertsSummary.join(', ')}\n<https://github.com/${org}/${name}/network/alerts|View all>`
         },
         accessory: {
             type: 'image',
