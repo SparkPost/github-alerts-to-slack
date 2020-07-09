@@ -51,7 +51,7 @@ async function doTheThing() {
   if (process.env.POST_TO_SLACK === "true") {
     const allBlocks = breakBlocks(blocks);
     // await will work with oldschool loops, but nothing requires a callback like array.forEach()
-    for (let i = 0; i < allBlocks.length - 1; i++) {
+    for (let i = 0; i < allBlocks.length; i++) {
       await slackClient.postMessage({ blocks: allBlocks[i] });
     }
   } else {
