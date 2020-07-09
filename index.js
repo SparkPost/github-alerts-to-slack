@@ -123,12 +123,15 @@ function breakBlocks(blocks) {
   while (blocks.length > maxBlocks) {
     // I'm sorry for using splice, no one is happy about this
     // this removes the first maxBlocks array entries from the blocks array and returns them into the chunk array
-    // we push all chunks onto all blocks until we're below the maxBlocks threshold, then add the remaining blocks to the allBlocks array
+    // we push chunks onto allBlocks until we're below the maxBlocks threshold
     const chunk = blocks.splice(0, maxBlocks);
     allBlocks.push(chunk);
   }
 
-  allBlocks.push(blocks);
+  if (blocks.length > 0) {
+    // add the remaining blocks to the allBlocks array
+    allBlocks.push(blocks);
+  }
   return allBlocks;
 }
 
