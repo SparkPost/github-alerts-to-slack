@@ -35,4 +35,3 @@ GITHUB_TOKEN=redacted SLACK_WEBHOOK=redacted POST_TO_SLACK=true GITHUB_QUERY="or
 
 * This report includes alerts with "critical" or "high" severity, and excludes dismissed alerts.
 * This report limits to the first 50 repositories found, and first 50 alerts found.
-* Posting to Slack may fail if the payload is too large.
