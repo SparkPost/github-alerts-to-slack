@@ -1,8 +1,10 @@
 const { GraphQLClient } = require('graphql-request');
+const got = require('got');
 const _ = require('lodash');
 
 class GitHubClient {
     constructor (token) {
+        this.token = token;
         this.graphQLClient = new GraphQLClient('https://api.github.com/graphql', {
             headers: {
             authorization: `bearer ${token}`
@@ -68,6 +70,26 @@ class GitHubClient {
           const [org, name] = repo.nameWithOwner.split('/');
           return { org, name };
       });
+    }
+    
+    async hasAlertsEnabled(owner, repo) {
+      const repoUrl = `https://api.github.com/repos/${owner}/${repo}`;
+       try {
+        await got(`${repoUrl}/vulnerability-alerts`, {
+          headers: {
+            Accept: 'application/vnd.github.dorian-preview+json',
+            'User-Agent': 'node-script',
+            Authorization: `token ${this.token}`
+          }
+        });  
+       } catch (err) {
+         if (err.response.statusCode === 404) {
+           return false;
+         } else {
+           throw new Error(`Could not retrieve vulnerability alerts - status code ${err.response.statusCode}`);
+         }
+       }
+       return true;
     }
 
     async getVulnerabilities(owner, repo) {

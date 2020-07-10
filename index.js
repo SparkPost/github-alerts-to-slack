@@ -21,22 +21,40 @@ async function doTheThing() {
     },
   ];
 
+  let disabledRepos = [];
+
   const repos = await githubClient.getRepos(searchQuery);
 
   await Promise.map(repos, async ({ name, org }) => {
-    const alerts = await githubClient.getVulnerabilities(org, name);
-    const criticalAlerts = _.filter(alerts, {
-      severity: "critical",
-      dismissed: false,
-    });
-    const highAlerts = _.filter(alerts, { severity: "high", dismissed: false });
-    if (criticalAlerts.length > 0 || highAlerts.length > 0) {
-      blocks.push({ type: "divider" });
-      blocks = blocks.concat(
-        formatAlertsForSlack({ org, name, criticalAlerts, highAlerts })
-      );
+    const hasAlertsEnabled = await githubClient.hasAlertsEnabled(org, name);
+    if (!hasAlertsEnabled) {
+      disabledRepos.push(`<https://github.com/${org}/${name}|${org}/${name}>`);
+    } else {
+      const alerts = await githubClient.getVulnerabilities(org, name);
+      const criticalAlerts = _.filter(alerts, {
+        severity: "critical",
+        dismissed: false,
+      });
+      const highAlerts = _.filter(alerts, { severity: "high", dismissed: false });
+      if (criticalAlerts.length > 0 || highAlerts.length > 0) {
+        blocks.push({ type: "divider" });
+        blocks = blocks.concat(
+          formatAlertsForSlack({ org, name, criticalAlerts, highAlerts })
+        );
+      }
     }
   });
+
+  if (disabledRepos.length > 0) {
+    blocks.push({ type: "divider" });
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `The following do not have alerts enabled: ${disabledRepos.join(", ")}`
+      }
+    })
+  }
 
   blocks.push({
     type: "context",
@@ -75,14 +93,14 @@ function formatAlertsForSlack({ org, name, criticalAlerts, highAlerts }) {
         type: "mrkdwn",
         text: `*<https://github.com/${org}/${name}|${org}/${name}>*\n${alertsSummary.join(
           ", "
-        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`,
+        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`
       },
       accessory: {
         type: "image",
         image_url:
           "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-        alt_text: "github",
-      },
+        alt_text: "github"
+      }
     },
   ];
   criticalAlerts.forEach((criticalAlert) => {
