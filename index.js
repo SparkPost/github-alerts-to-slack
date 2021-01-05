@@ -35,11 +35,25 @@ async function doTheThing() {
         severity: "critical",
         dismissed: false,
       });
-      const highAlerts = _.filter(alerts, { severity: "high", dismissed: false });
+      const highAlerts = _.filter(alerts, {
+        severity: "high",
+        dismissed: false,
+      });
+      const mediumAlerts = _.filter(alerts, {
+        severity: "moderate", // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
+        dismissed: false,
+      });
+
       if (criticalAlerts.length > 0 || highAlerts.length > 0) {
         blocks.push({ type: "divider" });
         blocks = blocks.concat(
-          formatAlertsForSlack({ org, name, criticalAlerts, highAlerts })
+          formatAlertsForSlack({
+            org,
+            name,
+            criticalAlerts,
+            highAlerts,
+            mediumAlerts,
+          })
         );
       }
     }
@@ -51,9 +65,11 @@ async function doTheThing() {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `The following do not have alerts enabled: ${disabledRepos.join(", ")}`
-      }
-    })
+        text: `The following do not have alerts enabled: ${disabledRepos.join(
+          ", "
+        )}`,
+      },
+    });
   }
 
   blocks.push({
@@ -77,13 +93,22 @@ async function doTheThing() {
   }
 }
 
-function formatAlertsForSlack({ org, name, criticalAlerts, highAlerts }) {
+function formatAlertsForSlack({
+  org,
+  name,
+  criticalAlerts,
+  highAlerts,
+  mediumAlerts,
+}) {
   const alertsSummary = [];
   if (criticalAlerts.length > 0) {
     alertsSummary.push(`${criticalAlerts.length} critical`);
   }
   if (highAlerts.length > 0) {
     alertsSummary.push(`${highAlerts.length} high`);
+  }
+  if (mediumAlerts.length > 0) {
+    alertsSummary.push(`${mediumAlerts.length} medium`);
   }
 
   const blocks = [
@@ -93,14 +118,14 @@ function formatAlertsForSlack({ org, name, criticalAlerts, highAlerts }) {
         type: "mrkdwn",
         text: `*<https://github.com/${org}/${name}|${org}/${name}>*\n${alertsSummary.join(
           ", "
-        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`
+        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`,
       },
       accessory: {
         type: "image",
         image_url:
           "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-        alt_text: "github"
-      }
+        alt_text: "github",
+      },
     },
   ];
   criticalAlerts.forEach((criticalAlert) => {
