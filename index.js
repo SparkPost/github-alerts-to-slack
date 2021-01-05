@@ -40,9 +40,12 @@ async function doTheThing() {
         dismissed: false,
       });
       const mediumAlerts = _.filter(alerts, {
-        severity: "moderate", // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
+        severity: "moderate",
         dismissed: false,
       });
+
+      // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
+      mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
 
       if (criticalAlerts.length > 0 || highAlerts.length > 0) {
         blocks.push({ type: "divider" });
@@ -84,7 +87,7 @@ async function doTheThing() {
 
   if (process.env.POST_TO_SLACK === "true") {
     const allBlocks = breakBlocks(blocks);
-    // await will work with oldschool loops, but nothing requires a callback like array.forEach()
+    // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
     for (let i = 0; i < allBlocks.length; i++) {
       await slackClient.postMessage({ blocks: allBlocks[i] });
     }
@@ -133,6 +136,9 @@ function formatAlertsForSlack({
   });
   highAlerts.forEach((highAlert) => {
     blocks.push(formatAlertForSlack(highAlert));
+  });
+  mediumAlerts.forEach((mediumAlert) => {
+    blocks.push(formatAlertForSlack(mediumAlert));
   });
 
   return blocks;
