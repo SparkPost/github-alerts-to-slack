@@ -22,8 +22,12 @@ class GitHubClient {
           edges {
             node {
               ... on Repository {
+                isArchived
                 name
                 nameWithOwner
+                primaryLanguage {
+                  name
+                }
               }
             }
           }
@@ -68,7 +72,9 @@ class GitHubClient {
       const repos = _.map(results.search.edges, 'node');
       return _.map(repos, (repo) => {
           const [org, name] = repo.nameWithOwner.split('/');
-          return { org, name };
+          const language = _.get(repo, 'primaryLanguage.name', '');
+          const archived = repo.isArchived;
+          return { org, name, language, archived };
       });
     }
     
