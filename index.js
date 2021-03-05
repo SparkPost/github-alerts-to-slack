@@ -2,6 +2,8 @@ const GithubClient = require("./github");
 const SlackClient = require("./slack");
 const _ = require("lodash");
 const Promise = require("bluebird");
+const dependabot = require("./dependabotAlerts");
+const codeQL = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -21,97 +23,41 @@ async function doTheThing() {
     },
   ];
 
-  let disabledRepos = [];
-
   const repos = await githubClient.getRepos(searchQuery);
+  const dependabotAlerts = await dependabot.getAlerts(repos);
 
-  await Promise.map(repos, async ({ name, org }) => {
-    const hasAlertsEnabled = await githubClient.hasAlertsEnabled(org, name);
-    if (!hasAlertsEnabled) {
-      disabledRepos.push(`<https://github.com/${org}/${name}|${org}/${name}>`);
-    } else {
-      const alerts = await githubClient.getVulnerabilities(org, name);
-      const criticalAlerts = _.filter(alerts, {
-        severity: "critical",
-        dismissed: false,
-      });
-      const highAlerts = _.filter(alerts, {
-        severity: "high",
-        dismissed: false,
-      });
-      const mediumAlerts = _.filter(alerts, {
-        severity: "moderate",
-        dismissed: false,
-      });
-
-      // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
-      mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
-
-      if (criticalAlerts.length > 0 || highAlerts.length > 0) {
-        blocks.push({ type: "divider" });
-        blocks = blocks.concat(
-          formatAlertsForSlack({
-            org,
-            name,
-            criticalAlerts,
-            highAlerts,
-            mediumAlerts,
-          })
-        );
-      }
-    }
-  });
-
-  if (disabledRepos.length > 0) {
+  const zipRepos = (dependabot, codeQL) => {
     blocks.push({ type: "divider" });
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `The following do not have alerts enabled: ${disabledRepos.join(
-          ", "
-        )}`,
-      },
-    });
-  }
+    blocks = blocks.concat();
+    const combine = _.merge(dependabot, codeQL);
+  };
 
-  blocks.push({
-    type: "context",
-    elements: [
-      {
-        type: "mrkdwn",
-        text: `Query: ${searchQuery}`,
-      },
-    ],
-  });
-
-  if (process.env.POST_TO_SLACK === "true") {
-    const allBlocks = breakBlocks(blocks);
-    // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
-    for (let i = 0; i < allBlocks.length; i++) {
-      await slackClient.postMessage({ blocks: allBlocks[i] });
+  const blockDisabledRepos = (alertType, disabledRepos) => {
+    if (disabledRepos.length > 0) {
+      blocks.push({ type: "divider" });
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `The following do not have ${alertType} alerts enabled: ${disabledRepos.join(
+            ", "
+          )}`,
+        },
+      });
     }
-  } else {
-    console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
-  }
+  };
 }
 
-function formatAlertsForSlack({
-  org,
-  name,
-  criticalAlerts,
-  highAlerts,
-  mediumAlerts,
-}) {
+function formatAlertsForSlack({ org, name, combinedAlerts }) {
   const alertsSummary = [];
-  if (criticalAlerts.length > 0) {
-    alertsSummary.push(`${criticalAlerts.length} critical`);
+  if (combinedAlerts.critical.length > 0) {
+    alertsSummary.push(`${dependabot.criticalAlerts.length} critical`);
   }
-  if (highAlerts.length > 0) {
-    alertsSummary.push(`${highAlerts.length} high`);
+  if (combinedAlerts.high.length > 0) {
+    alertsSummary.push(`${dependabot.highAlerts.length} high`);
   }
-  if (mediumAlerts.length > 0) {
-    alertsSummary.push(`${mediumAlerts.length} medium`);
+  if (combinedAlerts.medium.length > 0) {
+    alertsSummary.push(`${dependabot.mediumAlerts.length} medium`);
   }
 
   const blocks = [
@@ -140,6 +86,26 @@ function formatAlertsForSlack({
   mediumAlerts.forEach((mediumAlert) => {
     blocks.push(formatAlertForSlack(mediumAlert));
   });
+
+  blocks.push({
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `Query: ${searchQuery}`,
+      },
+    ],
+  });
+
+  // if (process.env.POST_TO_SLACK === "true") {
+  //   const allBlocks = breakBlocks(blocks);
+  //   // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
+  //   for (let i = 0; i < allBlocks.length; i++) {
+  //     await slackClient.postMessage({ blocks: allBlocks[i] });
+  //   }
+  // } else {
+  console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
+  // }
 
   return blocks;
 }
@@ -185,6 +151,6 @@ function breakBlocks(blocks) {
 }
 
 return doTheThing().catch((err) => {
-  console.log(`It failed :( - ${err.message})`);
+  console.log(`It failed :( - ${err})`);
   process.exit(-1);
 });
