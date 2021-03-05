@@ -20,8 +20,7 @@ let blocks = [
 ];
 
 async function hasAlertsEnabled(owner, repo) {
-  const repoUrl = `https://api.github.com/repos/SparkPost/${repo}`;
-  //const repoUrl = `https://api.github.com/repos/${owner}/${repo}`;
+  const repoUrl = `https://api.github.com/repos/${owner}/${repo}`;
   try {
     await got(`${repoUrl}/vulnerability-alerts`, {
       headers: {
@@ -112,7 +111,7 @@ const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
               createdAt
               vulnerableRequirements
               vulnerableManifestFilename
-              dismissReason
+              dismissReason 
               securityAdvisory {
                 description
                 ghsaId

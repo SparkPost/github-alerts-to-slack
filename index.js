@@ -24,7 +24,9 @@ async function doTheThing() {
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
+
   const dependabotAlerts = await dependabot.getAlerts(repos);
+  const codeQLAlerts = await codeQL.getCodeAlerts(repos).name;
 
   const zipRepos = (dependabot, codeQL) => {
     blocks.push({ type: "divider" });
