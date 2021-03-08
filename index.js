@@ -30,7 +30,10 @@ async function doTheThing() {
   const secretAlerts = await codeQL.getSecretAlerts(repos);
 
   const zipRepos = [...dependabotAlerts, ...codeQLAlerts, ...secretAlerts];
-
+  const result = _.mergeWith({}, ...zipRepos, (value, objValue) =>
+    (value || []).concat(objValue)
+  );
+  console.log(result);
   const blockDisabledRepos = (alertType, disabledRepos) => {
     if (disabledRepos.length > 0) {
       blocks.push({ type: "divider" });

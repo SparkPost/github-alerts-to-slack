@@ -6,7 +6,7 @@ const Promise = require("bluebird");
 const token = "9ed5cf7029a7d468438b0b734bb5bef1fd37b261";
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: "9ed5cf7029a7d468438b0b734bb5bef1fd37b261",
+  auth: process.env.GITHUB_TOKEN,
   // Set GitHub Auth Token in environment variable
 });
 
