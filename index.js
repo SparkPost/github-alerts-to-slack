@@ -4,10 +4,11 @@ const _ = require("lodash");
 const Promise = require("bluebird");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
+const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
-const searchQuery = process.env.GITHUB_QUERY;
+const searchQuery = "org:SparkPost topic:team-sa archived:false"; //process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
 const slackClient = new SlackClient(webhook);
@@ -24,15 +25,11 @@ async function doTheThing() {
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
-
   const dependabotAlerts = await dependabot.getAlerts(repos);
-  const codeQLAlerts = await codeQL.getCodeAlerts(repos).name;
+  const codeQLAlerts = await codeQL.getCodeAlerts(repos);
+  const secretAlerts = await codeQL.getSecretAlerts(repos);
 
-  const zipRepos = (dependabot, codeQL) => {
-    blocks.push({ type: "divider" });
-    blocks = blocks.concat();
-    const combine = _.merge(dependabot, codeQL);
-  };
+  const zipRepos = [...dependabotAlerts, ...codeQLAlerts, ...secretAlerts];
 
   const blockDisabledRepos = (alertType, disabledRepos) => {
     if (disabledRepos.length > 0) {

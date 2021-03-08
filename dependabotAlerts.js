@@ -1,11 +1,14 @@
 "use strict";
+const _ = require("lodash");
 
 const got = require("got");
 const Promise = require("bluebird");
-const GithubClient = require("./github");
-const token = process.env.GITHUB_TOKEN;
-
-const githubClient = new GithubClient(token);
+const token = "9ed5cf7029a7d468438b0b734bb5bef1fd37b261";
+const { Octokit } = require("@octokit/rest");
+const octokit = new Octokit({
+  auth: "9ed5cf7029a7d468438b0b734bb5bef1fd37b261",
+  // Set GitHub Auth Token in environment variable
+});
 
 let disabledRepos = [];
 
@@ -43,8 +46,7 @@ async function hasAlertsEnabled(owner, repo) {
 
 async function getAlerts(repos) {
   const sortedAlerts = [];
-  await Promise.map(repos, async ({ name, org }) => {
-    console.log(org, name);
+  await Promise.map(repos, async ({ org, name }) => {
     const enabledAlerts = await hasAlertsEnabled(org, name);
     if (!enabledAlerts) {
       disabledRepos.push(`<https://github.com/${org}/${name}|${org}/${name}>`);
@@ -66,19 +68,14 @@ async function getAlerts(repos) {
       // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
       mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
 
-      if (
-        criticalAlerts.length > 0 ||
-        highAlerts.length > 0 ||
-        mediumAlerts > 0
-      ) {
-        _.concat(sortedAlerts, {
-          name: {
-            org: org,
-            critical: criticalAlerts,
-            high: highAlerts,
-            medium: mediumAlerts,
-          },
-        });
+      if (criticalAlerts.length > 0 || highAlerts.length > 0) {
+        var obj = {};
+        obj[name] = {
+          critical: criticalAlerts,
+          high: highAlerts,
+          medium: mediumAlerts,
+        };
+        sortedAlerts.push(obj);
       }
     }
   });
@@ -87,7 +84,7 @@ async function getAlerts(repos) {
 
 async function getVulnerabilities(owner, repo) {
   const query = getVulnerabilityAlertQuery(owner, repo);
-  const results = await githubClient.graphQLClient.request(query);
+  const results = await octokit.graphql(query);
   const alerts = _.map(results.repository.vulnerabilityAlerts.edges, "node");
   return _.map(alerts, (alert) => {
     return {
