@@ -9,7 +9,7 @@ const fileName = "alerts_" + Date.now() + ".json";
 const Promise = require("bluebird");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
   // Set GitHub Auth Token in environment variable
 });
 
@@ -63,7 +63,7 @@ const getSecretAlerts = (repos) => {
         counts[num] = counts[num] ? counts[num] + 1 : 1;
       }
     }
-    sortedAlerts[name] = counts;
+    sortedAlerts[name] = { secrets: counts };
     return sortedAlerts;
   }).catch((error) => {
     console.error(

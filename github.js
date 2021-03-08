@@ -1,7 +1,7 @@
 const _ = require("lodash");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
   // Set GitHub Auth Token in environment variable
 });
 class GitHubClient {
@@ -13,7 +13,7 @@ class GitHubClient {
     return `query { 
         search(
           query: "${searchQuery}",
-          type: REPOSITORY, last: 10
+          type: REPOSITORY, last: 1
         ) {
           repositoryCount
           edges {
@@ -33,7 +33,7 @@ class GitHubClient {
     const repos = _.map(results.search.edges, "node");
     return _.map(repos, (repo) => {
       const [org, name] = repo.nameWithOwner.split("/");
-      return { org: org, name: name };
+      return { org: org, name: "msys-python-stl" };
     });
   }
 }

@@ -5,6 +5,7 @@ const Promise = require("bluebird");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
 const codeqlAlerts = require("./codeqlAlerts");
+const { sum } = require("lodash");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -28,66 +29,33 @@ async function doTheThing() {
   const dependabotAlerts = await dependabot.getAlerts(repos);
   const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
-
-  const zipRepos = [...dependabotAlerts, ...codeQLAlerts, ...secretAlerts];
-  const result = _.mergeWith({}, ...zipRepos, (value, objValue) =>
-    (value || []).concat(objValue)
+  const zipRepos = [
+    ...dependabotAlerts.sortedAlerts,
+    ...codeQLAlerts,
+    ...secretAlerts,
+  ];
+  const results = _.mergeWith({}, ...zipRepos, (repo, alerts) =>
+    (repo || []).concat(alerts)
   );
-  console.log(result);
-  const blockDisabledRepos = (alertType, disabledRepos) => {
-    if (disabledRepos.length > 0) {
-      blocks.push({ type: "divider" });
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `The following do not have ${alertType} alerts enabled: ${disabledRepos.join(
-            ", "
-          )}`,
-        },
-      });
-    }
-  };
-}
 
-function formatAlertsForSlack({ org, name, combinedAlerts }) {
-  const alertsSummary = [];
-  if (combinedAlerts.critical.length > 0) {
-    alertsSummary.push(`${dependabot.criticalAlerts.length} critical`);
-  }
-  if (combinedAlerts.high.length > 0) {
-    alertsSummary.push(`${dependabot.highAlerts.length} high`);
-  }
-  if (combinedAlerts.medium.length > 0) {
-    alertsSummary.push(`${dependabot.mediumAlerts.length} medium`);
-  }
+  Object.keys(results).forEach((repo) => {
+    const combinedAlerts = _.merge({}, ...results[repo]);
+    const summary = getAlertsSummary(combinedAlerts);
+    blocks.push(formatSlackBlocks(repo, combinedAlerts, summary));
+  });
 
-  const blocks = [
-    {
+  if (dependabotAlerts.disabledRepos.length > 0) {
+    blocks.push({ type: "divider" });
+    blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*<https://github.com/${org}/${name}|${org}/${name}>*\n${alertsSummary.join(
+        text: `The following do not have alerts enabled: ${dependabotAlerts.disabledRepos.join(
           ", "
-        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`,
+        )}`,
       },
-      accessory: {
-        type: "image",
-        image_url:
-          "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-        alt_text: "github",
-      },
-    },
-  ];
-  criticalAlerts.forEach((criticalAlert) => {
-    blocks.push(formatAlertForSlack(criticalAlert));
-  });
-  highAlerts.forEach((highAlert) => {
-    blocks.push(formatAlertForSlack(highAlert));
-  });
-  mediumAlerts.forEach((mediumAlert) => {
-    blocks.push(formatAlertForSlack(mediumAlert));
-  });
+    });
+  }
 
   blocks.push({
     type: "context",
@@ -100,33 +68,116 @@ function formatAlertsForSlack({ org, name, combinedAlerts }) {
   });
 
   // if (process.env.POST_TO_SLACK === "true") {
-  //   const allBlocks = breakBlocks(blocks);
-  //   // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
-  //   for (let i = 0; i < allBlocks.length; i++) {
-  //     await slackClient.postMessage({ blocks: allBlocks[i] });
-  //   }
+  // const allBlocks = breakBlocks(blocks);
+  // // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
+  // for (let i = 0; i < allBlocks.length; i++) {
+  //   await slackClient.postMessage({ blocks: allBlocks[i] });
+  // }
   // } else {
   console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
   // }
+}
 
+function formatSlackBlocks(name, results, alertsSummary) {
+  const blocks = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
+          ", "
+        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
+      },
+      accessory: {
+        type: "image",
+        image_url:
+          "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
+        alt_text: "github",
+      },
+    },
+  ];
+
+  _.keys(results).forEach((alertType) => {
+    blocks.push(formatSlackAlerts(alertType, results[alertType]));
+  });
   return blocks;
 }
 
-function formatAlertForSlack({ id, package_name, severity, created_at }) {
-  return {
-    type: "section",
-    block_id: `section-${id}`,
-    fields: [
-      {
-        type: "mrkdwn",
-        text: `*Package (Severity Level)*\n${package_name} (${severity})`,
-      },
-      {
-        type: "mrkdwn",
-        text: `*Created on*\n${created_at}`,
-      },
-    ],
-  };
+function formatSlackAlerts(alertType, alerts) {
+  if (_.includes(["critical", "high", "medium"], alertType)) {
+    return alerts.map((alert) => {
+      return {
+        type: "section",
+        block_id: `section-${alert.id}`,
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Package (Severity Level)*\n${alert.package_name} (${alert.severity})`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Created on*\n${alert.created_at}`,
+          },
+        ],
+      };
+    });
+    // } else if (_.includes(['errors', 'warnings'], alertType)) {
+    //   return {
+    //     type: "section",
+    //     block_id: `section-${alert.id}`,
+    //     fields: [
+    //       {
+    //         type: "mrkdwn",
+    //         text: `*Code (Severity Level)*\n${alert} (${alert.severity})`,
+    //       },
+    //       {
+    //         type: "mrkdwn",
+    //         text: `*Created on*\n${created_at}`,
+    //       },
+    //     ],
+    //   };
+    // }
+  } else if (_.includes(["secrets"], alertType)) {
+    return alerts.map((alert) => {
+      return {
+        type: "section",
+        block_id: `section-${id}`,
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Secret ${alert} (Occurrences)*\n (${count})`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Created on*\n${created_at}`,
+          },
+        ],
+      };
+    });
+  }
+}
+
+function getAlertsSummary(combinedAlerts) {
+  const alertsSummary = [];
+  if (combinedAlerts.critical && combinedAlerts.critical.length > 0) {
+    alertsSummary.push(`${combinedAlerts.critical.length} critical`);
+  }
+  if (combinedAlerts.high && combinedAlerts.high.length > 0) {
+    alertsSummary.push(`${combinedAlerts.high.length} high`);
+  }
+  if (combinedAlerts.medium && combinedAlerts.medium.length > 0) {
+    alertsSummary.push(`${combinedAlerts.medium.length} medium`);
+  }
+  if (combinedAlerts.errorsCount > 0) {
+    alertsSummary.push(`${combinedAlerts.errorsCount} errors`);
+  }
+  if (combinedAlerts.warningsCount > 0) {
+    alertsSummary.push(`${combinedAlerts.warningsCount} warnings`);
+  }
+  if (!_.isEmpty(combinedAlerts.secrets)) {
+    alertsSummary.push(`${_.size(combinedAlerts.secrets)} secrets`);
+  }
+  return alertsSummary;
 }
 
 /**

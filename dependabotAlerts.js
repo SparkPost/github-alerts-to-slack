@@ -3,24 +3,14 @@ const _ = require("lodash");
 
 const got = require("got");
 const Promise = require("bluebird");
-const token = "9ed5cf7029a7d468438b0b734bb5bef1fd37b261";
+const token = "8282e58ba536c6b7b800253b20f0432482ee95c6";
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
   // Set GitHub Auth Token in environment variable
 });
 
 let disabledRepos = [];
-
-let blocks = [
-  {
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: `:wave: GitHub Security Alerts Report\n\nThe following repositories have open vulnerability alerts and need your attention.`,
-    },
-  },
-];
 
 async function hasAlertsEnabled(owner, repo) {
   const repoUrl = `https://api.github.com/repos/${owner}/${repo}`;
@@ -79,7 +69,7 @@ async function getAlerts(repos) {
       }
     }
   });
-  return sortedAlerts;
+  return { sortedAlerts: sortedAlerts, disabledRepos: disabledRepos };
 }
 
 async function getVulnerabilities(owner, repo) {
