@@ -26,9 +26,10 @@ async function doTheThing() {
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
-  const dependabotAlerts = await dependabot.getAlerts(repos);
-  const codeQLAlerts = await codeQL.getCodeAlerts(repos);
+  // const dependabotAlerts = await dependabot.getAlerts(repos);
+  // const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
+  console.log(secretAlerts);
   const zipRepos = [
     ...dependabotAlerts.sortedAlerts,
     ...codeQLAlerts,
@@ -137,23 +138,23 @@ function formatSlackAlerts(alertType, alerts) {
     //     ],
     //   };
     // }
-  } else if (_.includes(["secrets"], alertType)) {
-    return alerts.map((alert) => {
-      return {
-        type: "section",
-        block_id: `section-${id}`,
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Secret ${alert} (Occurrences)*\n (${count})`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Created on*\n${created_at}`,
-          },
-        ],
-      };
-    });
+    // } else if (_.includes(["secrets"], alertType)) {
+    //   return alerts.map((alert) => {
+    //     return {
+    //       type: "section",
+    //       block_id: `section-${id}`,
+    //       fields: [
+    //         {
+    //           type: "mrkdwn",
+    //           text: `*Secret ${alert} (Occurrences)*\n (${count})`,
+    //         },
+    //         {
+    //           type: "mrkdwn",
+    //           text: `*Created on*\n${created_at}`,
+    //         },
+    //       ],
+    //     };
+    //   });
   }
 }
 

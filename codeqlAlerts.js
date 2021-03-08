@@ -9,7 +9,7 @@ const fileName = "alerts_" + Date.now() + ".json";
 const Promise = require("bluebird");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
+  auth: process.env.GITHUB_TOKEN,
   // Set GitHub Auth Token in environment variable
 });
 
@@ -63,12 +63,35 @@ const getSecretAlerts = (repos) => {
         counts[num] = counts[num] ? counts[num] + 1 : 1;
       }
     }
-    sortedAlerts[name] = { secrets: counts };
+    sortedAlerts[name] = { count: counts, created_at: alerts.created_at };
     return sortedAlerts;
-  }).catch((error) => {
-    console.error(
-      `Failed for ${org}/${name}\n${error.message}\n${error.documentation_url}`
-    );
+  })
+    .then((sortedAlerts) => {
+      return buildSecretBlocks(sortedAlerts);
+    })
+    .catch((error) => {
+      console.error(
+        `Failed for ${org}/${name}\n${error.message}\n${error.documentation_url}`
+      );
+    });
+};
+
+const buildSecretBlocks = (alerts) => {
+  return alerts.map((alert) => {
+    return {
+      type: "section",
+      block_id: `section-${id}`,
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Secret ${alert} (Occurrences)*\n (${count})`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Created on*\n${created_at}`,
+        },
+      ],
+    };
   });
 };
 

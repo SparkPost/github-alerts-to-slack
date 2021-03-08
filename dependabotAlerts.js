@@ -3,10 +3,10 @@ const _ = require("lodash");
 
 const got = require("got");
 const Promise = require("bluebird");
-const token = "8282e58ba536c6b7b800253b20f0432482ee95c6";
+const token = process.env.GITHUB_TOKEN;
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
+  auth: token,
   // Set GitHub Auth Token in environment variable
 });
 

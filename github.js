@@ -1,7 +1,7 @@
 const _ = require("lodash");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
-  auth: "8282e58ba536c6b7b800253b20f0432482ee95c6",
+  auth: process.env.GITHUB_TOKEN,
   // Set GitHub Auth Token in environment variable
 });
 class GitHubClient {
