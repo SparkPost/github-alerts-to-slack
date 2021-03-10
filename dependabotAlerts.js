@@ -36,7 +36,8 @@ async function hasAlertsEnabled(owner, repo) {
 
 async function getAlerts(repos) {
   const sortedAlerts = [];
-  await Promise.map(repos, async ({ org, name }) => {
+  const blocks = [];
+  return await Promise.map(repos, async ({ org, name }) => {
     const enabledAlerts = await hasAlertsEnabled(org, name);
     if (!enabledAlerts) {
       disabledRepos.push(`<https://github.com/${org}/${name}|${org}/${name}>`);
@@ -59,17 +60,14 @@ async function getAlerts(repos) {
       mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
 
       if (criticalAlerts.length > 0 || highAlerts.length > 0) {
-        var obj = {};
-        obj[name] = {
-          critical: criticalAlerts,
-          high: highAlerts,
-          medium: mediumAlerts,
-        };
-        sortedAlerts.push(obj);
+        blocks.push(await buildBlocks(criticalAlerts));
+        blocks.push(await buildBlocks(highAlerts));
+        blocks.push(await buildBlocks(mediumAlerts));
+        return { repo: name, blocks };
       }
     }
   });
-  return { sortedAlerts: sortedAlerts, disabledRepos: disabledRepos };
+  // return { sortedAlerts: sortedAlerts, disabledRepos: disabledRepos };
 }
 
 async function getVulnerabilities(owner, repo) {
@@ -118,6 +116,23 @@ const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
       }
     }`;
 };
+
+async function buildBlocks({ id, packageName, severity, createdAt }) {
+  return {
+    type: "section",
+    block_id: `section-${id}`,
+    fields: [
+      {
+        type: "mrkdwn",
+        text: `*Package (Severity Level)*\n${packageName} (${severity})`,
+      },
+      {
+        type: "mrkdwn",
+        text: `*Created on*\n${createdAt}`,
+      },
+    ],
+  };
+}
 
 module.exports = {
   getAlerts,

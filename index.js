@@ -6,6 +6,7 @@ const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
 const codeqlAlerts = require("./codeqlAlerts");
 const { sum } = require("lodash");
+const dependabotAlerts = require("./dependabotAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -26,37 +27,27 @@ async function doTheThing() {
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
-  // const dependabotAlerts = await dependabot.getAlerts(repos);
-  // const codeQLAlerts = await codeQL.getCodeAlerts(repos);
+  const dependabotAlerts = await dependabot.getAlerts(repos);
+  const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
-  console.log(secretAlerts);
-  const zipRepos = [
-    ...dependabotAlerts.sortedAlerts,
+
+  results = mergeBlocksByRepo([
+    ...dependabotAlerts,
     ...codeQLAlerts,
     ...secretAlerts,
-  ];
-  const results = _.mergeWith({}, ...zipRepos, (repo, alerts) =>
-    (repo || []).concat(alerts)
-  );
-
-  Object.keys(results).forEach((repo) => {
-    const combinedAlerts = _.merge({}, ...results[repo]);
-    const summary = getAlertsSummary(combinedAlerts);
-    blocks.push(formatSlackBlocks(repo, combinedAlerts, summary));
-  });
-
-  if (dependabotAlerts.disabledRepos.length > 0) {
-    blocks.push({ type: "divider" });
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `The following do not have alerts enabled: ${dependabotAlerts.disabledRepos.join(
-          ", "
-        )}`,
-      },
-    });
-  }
+  ]);
+  // if (dependabotAlerts.disabledRepos.length > 0) {
+  //   blocks.push({ type: "divider" });
+  //   blocks.push({
+  //     type: "section",
+  //     text: {
+  //       type: "mrkdwn",
+  //       text: `The following do not have alerts enabled: ${dependabotAlerts.disabledRepos.join(
+  //         ", "
+  //       )}`,
+  //     },
+  //   });
+  // }
 
   blocks.push({
     type: "context",
@@ -79,83 +70,40 @@ async function doTheThing() {
   // }
 }
 
-function formatSlackBlocks(name, results, alertsSummary) {
-  const blocks = [
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
-          ", "
-        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
-      },
-      accessory: {
-        type: "image",
-        image_url:
-          "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-        alt_text: "github",
-      },
-    },
-  ];
-
-  _.keys(results).forEach((alertType) => {
-    blocks.push(formatSlackAlerts(alertType, results[alertType]));
-  });
-  return blocks;
+function mergeBlocksByRepo(zipRepos) {
+  return zipRepos.reduce(function (o, cur) {
+    var occurs = o.reduce(function (n, item, i) {
+      return item.repo === cur.repo ? i : n;
+    }, -1);
+    if (occurs >= 0) {
+      o[occurs].blocks = o[occurs].blocks.concat(cur.blocks);
+    } else {
+      var obj = {
+        repo: cur.repo,
+        blocks: [cur.blocks],
+      };
+      o = o.concat([obj]);
+    }
+    return o;
+  }, []);
 }
 
-function formatSlackAlerts(alertType, alerts) {
-  if (_.includes(["critical", "high", "medium"], alertType)) {
-    return alerts.map((alert) => {
-      return {
-        type: "section",
-        block_id: `section-${alert.id}`,
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Package (Severity Level)*\n${alert.package_name} (${alert.severity})`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Created on*\n${alert.created_at}`,
-          },
-        ],
-      };
-    });
-    // } else if (_.includes(['errors', 'warnings'], alertType)) {
-    //   return {
-    //     type: "section",
-    //     block_id: `section-${alert.id}`,
-    //     fields: [
-    //       {
-    //         type: "mrkdwn",
-    //         text: `*Code (Severity Level)*\n${alert} (${alert.severity})`,
-    //       },
-    //       {
-    //         type: "mrkdwn",
-    //         text: `*Created on*\n${created_at}`,
-    //       },
-    //     ],
-    //   };
-    // }
-    // } else if (_.includes(["secrets"], alertType)) {
-    //   return alerts.map((alert) => {
-    //     return {
-    //       type: "section",
-    //       block_id: `section-${id}`,
-    //       fields: [
-    //         {
-    //           type: "mrkdwn",
-    //           text: `*Secret ${alert} (Occurrences)*\n (${count})`,
-    //         },
-    //         {
-    //           type: "mrkdwn",
-    //           text: `*Created on*\n${created_at}`,
-    //         },
-    //       ],
-    //     };
-    //   });
-  }
+function initialRepoSlackBlock(name, alertsSummary) {
+  return {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
+        ", "
+      )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
+    },
+    accessory: {
+      type: "image",
+      image_url:
+        "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
+      alt_text: "github",
+    },
+  };
 }
 
 function getAlertsSummary(combinedAlerts) {
