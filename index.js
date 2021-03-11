@@ -1,12 +1,8 @@
 const GithubClient = require("./github");
 const SlackClient = require("./slack");
 const _ = require("lodash");
-const Promise = require("bluebird");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
-const codeqlAlerts = require("./codeqlAlerts");
-const { sum, values } = require("lodash");
-const dependabotAlerts = require("./dependabotAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -42,7 +38,7 @@ async function doTheThing() {
 
   // insert summary blocks
   results.forEach((repo) => {
-    return repo.blocks.unshift(getAlertsSummary({ repo, summary }));
+    return repo.blocks.unshift(getAlertsSummary(repo.repo, repo.summary));
   });
 
   blocks.push(results);
