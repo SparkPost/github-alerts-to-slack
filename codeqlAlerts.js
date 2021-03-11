@@ -35,8 +35,7 @@ async function getCodeAlerts(repos) {
           if (!sortedAlerts[rule]) {
             sortedAlerts[rule] = { count: 1 };
             sortedAlerts[rule]["createdAt"] = alerts[i].created_at;
-            sortedAlerts[rule]["severity"] = "error";
-            sortedAlerts[rule]["severity"] = "warning";
+            sortedAlerts[rule]["severity"] = alerts[i].rule.severity;
           } else {
             sortedAlerts[rule]["count"] += 1;
           }
