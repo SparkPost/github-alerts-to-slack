@@ -20,6 +20,8 @@ const [, , ...args] = process.argv;
 async function getCodeAlerts(repos) {
   return await Promise.map(repos, async ({ name, org }) => {
     const sortedAlerts = {};
+    const summary = {};
+
     return await octokit
       .paginate(octokit.codeScanning.listAlertsForRepo, {
         owner: org,
@@ -27,15 +29,25 @@ async function getCodeAlerts(repos) {
       })
       .then(async (alerts) => {
         const filteredAlerts = await filterCodeAlerts(alerts);
+
         for (var i = 0; i < filteredAlerts.length; i++) {
           var rule = filteredAlerts[i].rule.description;
           if (!sortedAlerts[rule]) {
             sortedAlerts[rule] = { count: 1 };
             sortedAlerts[rule]["createdAt"] = alerts[i].created_at;
-            sortedAlerts[rule]["severity"] = alerts[i].rule.severity;
+            sortedAlerts[rule]["severity"] = "error";
+            sortedAlerts[rule]["severity"] = "warning";
           } else {
             sortedAlerts[rule]["count"] += 1;
           }
+          summary["errorsCount"] =
+            filteredAlerts[i].rule.severity === "error"
+              ? summary["errorsCount"]
+              : (summary["errorsCount"] || 0) + 1;
+          summary["warningsCount"] =
+            filteredAlerts[i].rule.severity === "warning"
+              ? summary["warningsCount"]
+              : (summary["warningsCount"] || 0) + 1;
         }
         return sortedAlerts;
       })
@@ -44,7 +56,7 @@ async function getCodeAlerts(repos) {
         for (const alert in sortedAlerts) {
           blocks.push(await buildBlocks("code", alert, sortedAlerts[alert]));
         }
-        return { repo: name, blocks };
+        return { repo: name, summary, blocks };
       });
   }).catch((error) => {
     console.error(
@@ -70,6 +82,8 @@ async function filterCodeAlerts(alerts) {
 async function getSecretAlerts(repos) {
   return Promise.map(repos, async ({ name, org }) => {
     const sortedAlerts = {};
+    const summary = {};
+
     return await octokit
       .paginate(octokit.secretScanning.listAlertsForRepo, {
         owner: org,
@@ -85,6 +99,7 @@ async function getSecretAlerts(repos) {
             } else {
               sortedAlerts[type]["count"] += 1;
             }
+            summary["secrets"] = (summary["warningsCount"] || 0) + 1;
           }
         }
         return sortedAlerts;
@@ -94,7 +109,7 @@ async function getSecretAlerts(repos) {
         for (const alert in sortedAlerts) {
           blocks.push(await buildBlocks("secret", alert, sortedAlerts[alert]));
         }
-        return { repo: name, blocks };
+        return { repo: name, summary, blocks };
       });
   }).catch((error) => {
     console.error(

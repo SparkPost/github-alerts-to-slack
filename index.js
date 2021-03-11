@@ -27,27 +27,32 @@ async function doTheThing() {
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
-  const dependabotAlerts = await dependabot.getAlerts(repos);
   const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
+
+  // get enabled and disabled dependabot alerts
+  const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
+  const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
 
   results = mergeBlocksByRepo([
     ...dependabotAlerts,
     ...codeQLAlerts,
     ...secretAlerts,
   ]);
-  // if (dependabotAlerts.disabledRepos.length > 0) {
-  //   blocks.push({ type: "divider" });
-  //   blocks.push({
-  //     type: "section",
-  //     text: {
-  //       type: "mrkdwn",
-  //       text: `The following do not have alerts enabled: ${dependabotAlerts.disabledRepos.join(
-  //         ", "
-  //       )}`,
-  //     },
-  //   });
-  // }
+  blocks.push(results);
+
+  if (hasAlertsEnabled.disabled.length > 0) {
+    blocks.push({ type: "divider" });
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `The following do not have alerts enabled: ${hasAlertsEnabled.disabled.join(
+          ", "
+        )}`,
+      },
+    });
+  }
 
   blocks.push({
     type: "context",
@@ -59,32 +64,35 @@ async function doTheThing() {
     ],
   });
 
-  // if (process.env.POST_TO_SLACK === "true") {
-  // const allBlocks = breakBlocks(blocks);
-  // // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
-  // for (let i = 0; i < allBlocks.length; i++) {
-  //   await slackClient.postMessage({ blocks: allBlocks[i] });
-  // }
-  // } else {
-  console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
-  // }
+  if (process.env.POST_TO_SLACK === "true") {
+    const allBlocks = breakBlocks(blocks);
+    // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
+    for (let i = 0; i < allBlocks.length; i++) {
+      await slackClient.postMessage({ blocks: allBlocks[i] });
+    }
+  } else {
+    console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
+  }
 }
 
 function mergeBlocksByRepo(zipRepos) {
-  return zipRepos.reduce(function (o, cur) {
-    var occurs = o.reduce(function (n, item, i) {
-      return item.repo === cur.repo ? i : n;
+  return zipRepos.reduce(function (zippedRepos, obj) {
+    const repo = zippedRepos.reduce(function (i, item, j) {
+      return item.repo === obj.repo ? j : i;
     }, -1);
-    if (occurs >= 0) {
-      o[occurs].blocks = o[occurs].blocks.concat(cur.blocks);
+    if (repo >= 0) {
+      zippedRepos[repo].blocks = zippedRepos[repo].blocks.concat(obj.blocks);
     } else {
-      var obj = {
-        repo: cur.repo,
-        blocks: [cur.blocks],
+      const mergedBlocks = {
+        repo: obj.repo,
+        blocks: [obj.blocks],
       };
-      o = o.concat([obj]);
+      // insert initial slack block detailing alerts for a particular repo
+      // mergedBlocks.blocks.unshift(initialRepoSlackBlock(obj.repo, summary))
+
+      zippedRepos = zippedRepos.concat([mergedBlocks]);
     }
-    return o;
+    return zippedRepos;
   }, []);
 }
 
@@ -108,14 +116,14 @@ function initialRepoSlackBlock(name, alertsSummary) {
 
 function getAlertsSummary(combinedAlerts) {
   const alertsSummary = [];
-  if (combinedAlerts.critical && combinedAlerts.critical.length > 0) {
-    alertsSummary.push(`${combinedAlerts.critical.length} critical`);
+  if (combinedAlerts.critical) {
+    alertsSummary.push(`${combinedAlerts.critical} critical`);
   }
-  if (combinedAlerts.high && combinedAlerts.high.length > 0) {
-    alertsSummary.push(`${combinedAlerts.high.length} high`);
+  if (combinedAlerts.high) {
+    alertsSummary.push(`${combinedAlerts.high} high`);
   }
-  if (combinedAlerts.medium && combinedAlerts.medium.length > 0) {
-    alertsSummary.push(`${combinedAlerts.medium.length} medium`);
+  if (combinedAlerts.medium) {
+    alertsSummary.push(`${combinedAlerts.medium} medium`);
   }
   if (combinedAlerts.errorsCount > 0) {
     alertsSummary.push(`${combinedAlerts.errorsCount} errors`);
@@ -123,8 +131,8 @@ function getAlertsSummary(combinedAlerts) {
   if (combinedAlerts.warningsCount > 0) {
     alertsSummary.push(`${combinedAlerts.warningsCount} warnings`);
   }
-  if (!_.isEmpty(combinedAlerts.secrets)) {
-    alertsSummary.push(`${_.size(combinedAlerts.secrets)} secrets`);
+  if (combinedAlerts.secrets > 0) {
+    alertsSummary.push(`${combinedAlerts.secrets} secrets`);
   }
   return alertsSummary;
 }
