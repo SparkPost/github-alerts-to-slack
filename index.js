@@ -5,7 +5,7 @@ const Promise = require("bluebird");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
 const codeqlAlerts = require("./codeqlAlerts");
-const { sum } = require("lodash");
+const { sum, values } = require("lodash");
 const dependabotAlerts = require("./dependabotAlerts");
 
 const token = process.env.GITHUB_TOKEN;
@@ -39,6 +39,12 @@ async function doTheThing() {
     ...codeQLAlerts,
     ...secretAlerts,
   ]);
+
+  // insert summary blocks
+  results.forEach((repo) => {
+    return repo.blocks.unshift(getAlertsSummary({ repo, summary }));
+  });
+
   blocks.push(results);
 
   if (hasAlertsEnabled.disabled.length > 0) {
@@ -82,14 +88,13 @@ function mergeBlocksByRepo(zipRepos) {
     }, -1);
     if (repo >= 0) {
       zippedRepos[repo].blocks = zippedRepos[repo].blocks.concat(obj.blocks);
+      zippedRepos[repo].summary = zippedRepos[repo].summary.concat(obj.summary);
     } else {
       const mergedBlocks = {
         repo: obj.repo,
         blocks: [obj.blocks],
+        summary: [obj.summary],
       };
-      // insert initial slack block detailing alerts for a particular repo
-      // mergedBlocks.blocks.unshift(initialRepoSlackBlock(obj.repo, summary))
-
       zippedRepos = zippedRepos.concat([mergedBlocks]);
     }
     return zippedRepos;
@@ -114,27 +119,15 @@ function initialRepoSlackBlock(name, alertsSummary) {
   };
 }
 
-function getAlertsSummary(combinedAlerts) {
-  const alertsSummary = [];
-  if (combinedAlerts.critical) {
-    alertsSummary.push(`${combinedAlerts.critical} critical`);
+function getAlertsSummary(name, summary) {
+  alertsSummary = [];
+  for (var i = 0; i < summary.length; i++) {
+    Object.keys(summary[i]).forEach((severity) => {
+      const count = summary[i][severity];
+      alertsSummary.push(`${count} ${severity}`);
+    });
   }
-  if (combinedAlerts.high) {
-    alertsSummary.push(`${combinedAlerts.high} high`);
-  }
-  if (combinedAlerts.medium) {
-    alertsSummary.push(`${combinedAlerts.medium} medium`);
-  }
-  if (combinedAlerts.errorsCount > 0) {
-    alertsSummary.push(`${combinedAlerts.errorsCount} errors`);
-  }
-  if (combinedAlerts.warningsCount > 0) {
-    alertsSummary.push(`${combinedAlerts.warningsCount} warnings`);
-  }
-  if (combinedAlerts.secrets > 0) {
-    alertsSummary.push(`${combinedAlerts.secrets} secrets`);
-  }
-  return alertsSummary;
+  return initialRepoSlackBlock(name, alertsSummary);
 }
 
 /**

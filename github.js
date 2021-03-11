@@ -16,7 +16,7 @@ class GitHubClient {
     return `query { 
         search(
           query: "${searchQuery}",
-          type: REPOSITORY, last: 50
+          type: REPOSITORY, last: 2
         ) {
           repositoryCount
           edges {
