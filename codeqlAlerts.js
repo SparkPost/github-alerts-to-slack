@@ -17,16 +17,16 @@ const [, , ...args] = process.argv;
 
 //  .number, .created_at, .url, .html_url, .state, .dismissed_by.login, .dismissed_at, .dismissed_reason, .rule.id, .rule.severity, .rule.description, .tool.name, .most_recent_instance.classifications[]]
 async function getCodeAlerts(repos) {
-  return Promise.map(repos, async ({ name, org }) => {
+  return Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
-    return await octokit
+    return octokit
       .paginate(octokit.codeScanning.listAlertsForRepo, {
         owner: org,
         repo: name,
       })
-      .then(async (alerts) => {
+      .then((alerts) => {
         const filteredAlerts = filterCodeAlerts(alerts);
 
         filteredAlerts.forEach((alert) => {
@@ -47,7 +47,7 @@ async function getCodeAlerts(repos) {
         });
         return sortedAlerts;
       })
-      .then(async (sortedAlerts) => {
+      .then((sortedAlerts) => {
         const blocks = Object.keys(sortedAlerts).map((alert) =>
           buildBlocks("code", alert, sortedAlerts[alert])
         );
@@ -62,11 +62,10 @@ async function getCodeAlerts(repos) {
 
 function filterCodeAlerts(alerts) {
   return alerts.filter((alert) => {
-    const remediationDue = moment(alert.created_at).add(14, "days");
     if (
       alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
-      remediationDue < moment()
+      moment(alert.created_at).add(14, "days") < moment()
     ) {
       return alert;
     }
@@ -75,11 +74,11 @@ function filterCodeAlerts(alerts) {
 
 // .number, .html_url, .state, .secret_type, .secret, .resolution, .resolved_by, .resolved_at]
 async function getSecretAlerts(repos) {
-  return Promise.map(repos, async ({ name, org }) => {
+  return Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
-    return await octokit
+    return octokit
       .paginate(octokit.secretScanning.listAlertsForRepo, {
         owner: org,
         repo: name,
@@ -87,7 +86,7 @@ async function getSecretAlerts(repos) {
       .then((alerts) => {
         alerts.forEach((alert) => {
           if (alert.state === "open") {
-            var type = alert.secret_type;
+            const type = alert.secret_type;
             if (!sortedAlerts[type]) {
               sortedAlerts[type] = { count: 1 };
               sortedAlerts[type]["createdAt"] = alert.created_at;
@@ -99,7 +98,7 @@ async function getSecretAlerts(repos) {
         });
         return sortedAlerts;
       })
-      .then(async (sortedAlerts) => {
+      .then((sortedAlerts) => {
         const blocks = [];
         Object.keys(sortedAlerts).forEach((alert) =>
           blocks.push(buildBlocks("secret", alert, sortedAlerts[alert]))

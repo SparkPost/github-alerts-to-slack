@@ -4,17 +4,15 @@ const _ = require("lodash");
 const Promise = require("bluebird");
 const token = process.env.GITHUB_TOKEN;
 const { Octokit } = require("@octokit/rest");
-const { sum } = require("lodash");
 const octokit = new Octokit({
   auth: token,
   // Set GitHub Auth Token in environment variable
 });
 
-async function getAlerts(repos) {
-  const sortedAlerts = [];
+function getAlerts(repos) {
   const blocks = [];
   const summary = {};
-  return await Promise.map(repos, async ({ org, name }) => {
+  return Promise.map(repos, async ({ org, name }) => {
     const alerts = await getVulnerabilities(org, name);
     const criticalAlerts = alerts.filter(
       (alert) => alert.severity === "critical" && !alert.dismissed
@@ -45,7 +43,7 @@ async function getAlerts(repos) {
   });
 }
 
-async function getVulnerabilities(owner, repo) {
+const getVulnerabilities = async (owner, repo) => {
   const query = getVulnerabilityAlertQuery(owner, repo);
   const results = await octokit.graphql(query);
   const alerts = _.map(results.repository.vulnerabilityAlerts.edges, "node");
@@ -59,7 +57,7 @@ async function getVulnerabilities(owner, repo) {
       dismissed: !!alert.dismissReason,
     };
   });
-}
+};
 
 const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
   return `query {
@@ -92,7 +90,7 @@ const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
     }`;
 };
 
-async function buildBlocks(alerts) {
+function buildBlocks(alerts) {
   const blocks = [];
   alerts.forEach((alert) => {
     blocks.push({
