@@ -32,7 +32,7 @@ class GitHubClient {
   }
 
   async getRepos(searchQuery) {
-    const results = await octokit.graphql(this._getReposQuery(searchQuery));
+    const results = octokit.graphql(this._getReposQuery(searchQuery));
     const repos = _.map(results.search.edges, "node");
     return repos.map((repo) => {
       const [org, name] = repo.nameWithOwner.split("/");
@@ -43,7 +43,7 @@ class GitHubClient {
   async hasAlertsEnabled(repos) {
     const enabled = [];
     const disabled = [];
-    repos.forEach(async (repo) => {
+    repos.forEach((repo) => {
       const repoUrl = `https://api.github.com/repos/${repo.org}/${repo.name}`;
       try {
         got(`${repoUrl}/vulnerability-alerts`, {

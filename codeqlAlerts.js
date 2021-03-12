@@ -16,7 +16,7 @@ const octokit = new Octokit({
 const [, , ...args] = process.argv;
 
 //  .number, .created_at, .url, .html_url, .state, .dismissed_by.login, .dismissed_at, .dismissed_reason, .rule.id, .rule.severity, .rule.description, .tool.name, .most_recent_instance.classifications[]]
-async function getCodeAlerts(repos) {
+function getCodeAlerts(repos) {
   return Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
@@ -62,18 +62,14 @@ async function getCodeAlerts(repos) {
 
 function filterCodeAlerts(alerts) {
   return alerts.filter((alert) => {
-    if (
-      alert.rule.severity !== "note" &&
+    alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
-      moment(alert.created_at).add(14, "days") < moment()
-    ) {
-      return alert;
-    }
+      moment(alert.created_at).add(14, "days") < moment();
   });
 }
 
 // .number, .html_url, .state, .secret_type, .secret, .resolution, .resolved_by, .resolved_at]
-async function getSecretAlerts(repos) {
+function getSecretAlerts(repos) {
   return Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};

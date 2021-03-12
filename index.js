@@ -29,7 +29,8 @@ async function doTheThing() {
   // get enabled and disabled dependabot alerts
   const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
   const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
-
+  console.log(codeQLAlerts);
+  console.log(secretAlerts);
   results = mergeBlocksByRepo([
     ...dependabotAlerts,
     ...codeQLAlerts,

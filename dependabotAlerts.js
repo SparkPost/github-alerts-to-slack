@@ -12,8 +12,8 @@ const octokit = new Octokit({
 function getAlerts(repos) {
   const blocks = [];
   const summary = {};
-  return Promise.map(repos, async ({ org, name }) => {
-    const alerts = await getVulnerabilities(org, name);
+  return Promise.map(repos, ({ org, name }) => {
+    const alerts = getVulnerabilities(org, name);
     const criticalAlerts = alerts.filter(
       (alert) => alert.severity === "critical" && !alert.dismissed
     );
@@ -43,9 +43,9 @@ function getAlerts(repos) {
   });
 }
 
-const getVulnerabilities = async (owner, repo) => {
+const getVulnerabilities = (owner, repo) => {
   const query = getVulnerabilityAlertQuery(owner, repo);
-  const results = await octokit.graphql(query);
+  const results = octokit.graphql(query);
   const alerts = _.map(results.repository.vulnerabilityAlerts.edges, "node");
   return _.map(alerts, (alert) => {
     return {
