@@ -34,9 +34,9 @@ class GitHubClient {
   async getRepos(searchQuery) {
     const results = await octokit.graphql(this._getReposQuery(searchQuery));
     const repos = _.map(results.search.edges, "node");
-    return _.map(repos, (repo) => {
+    return repos.map((repo) => {
       const [org, name] = repo.nameWithOwner.split("/");
-      return { org: org, name: name };
+      return { org, name };
     });
   }
 

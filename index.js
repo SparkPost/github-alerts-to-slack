@@ -3,6 +3,7 @@ const SlackClient = require("./slack");
 const _ = require("lodash");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
+const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -25,7 +26,6 @@ async function doTheThing() {
   const repos = await githubClient.getRepos(searchQuery);
   const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
-
   // get enabled and disabled dependabot alerts
   const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
   const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
@@ -120,7 +120,9 @@ function getAlertsSummary(name, summary) {
   for (var i = 0; i < summary.length; i++) {
     Object.keys(summary[i]).forEach((severity) => {
       const count = summary[i][severity];
-      alertsSummary.push(`${count} ${severity}`);
+      if (count > 0) {
+        alertsSummary.push(`${count} ${severity}`);
+      }
     });
   }
   return initialRepoSlackBlock(name, alertsSummary);

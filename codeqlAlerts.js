@@ -6,7 +6,6 @@ require("dotenv").config();
 const _ = require("lodash");
 const moment = require("moment");
 const owner = "Sparkpost";
-const fileName = "alerts_" + Date.now() + ".json";
 const Promise = require("bluebird");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
@@ -18,7 +17,7 @@ const [, , ...args] = process.argv;
 
 //  .number, .created_at, .url, .html_url, .state, .dismissed_by.login, .dismissed_at, .dismissed_reason, .rule.id, .rule.severity, .rule.description, .tool.name, .most_recent_instance.classifications[]]
 async function getCodeAlerts(repos) {
-  return await Promise.map(repos, async ({ name, org }) => {
+  return Promise.map(repos, async ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
@@ -28,33 +27,30 @@ async function getCodeAlerts(repos) {
         repo: name,
       })
       .then(async (alerts) => {
-        const filteredAlerts = await filterCodeAlerts(alerts);
+        const filteredAlerts = filterCodeAlerts(alerts);
 
-        for (var i = 0; i < filteredAlerts.length; i++) {
-          var rule = filteredAlerts[i].rule.description;
+        filteredAlerts.forEach((alert) => {
+          var rule = alert.rule.description;
           if (!sortedAlerts[rule]) {
             sortedAlerts[rule] = { count: 1 };
-            sortedAlerts[rule]["createdAt"] = alerts[i].created_at;
-            sortedAlerts[rule]["severity"] = alerts[i].rule.severity;
+            sortedAlerts[rule]["createdAt"] = alert.created_at;
+            sortedAlerts[rule]["severity"] = alert.rule.severity;
           } else {
             sortedAlerts[rule]["count"] += 1;
           }
-          summary["errorsCount"] =
-            filteredAlerts[i].rule.severity === "error"
-              ? summary["errorsCount"]
-              : (summary["errorsCount"] || 0) + 1;
-          summary["warningsCount"] =
-            filteredAlerts[i].rule.severity === "warning"
-              ? summary["warningsCount"]
-              : (summary["warningsCount"] || 0) + 1;
-        }
+          if (alert.rule.severity === "error") {
+            summary.error = (summary.error || 0) + 1;
+          }
+          if (alert.rule.severity === "warning") {
+            summary.warning = (summary.warning || 0) + 1;
+          }
+        });
         return sortedAlerts;
       })
       .then(async (sortedAlerts) => {
-        const blocks = [];
-        for (const alert in sortedAlerts) {
-          blocks.push(await buildBlocks("code", alert, sortedAlerts[alert]));
-        }
+        const blocks = Object.keys(sortedAlerts).map((alert) =>
+          buildBlocks("code", alert, sortedAlerts[alert])
+        );
         return { repo: name, summary, blocks };
       });
   }).catch((error) => {
@@ -64,7 +60,7 @@ async function getCodeAlerts(repos) {
   });
 }
 
-async function filterCodeAlerts(alerts) {
+function filterCodeAlerts(alerts) {
   return alerts.filter((alert) => {
     const remediationDue = moment(alert.created_at).add(14, "days");
     if (
@@ -89,25 +85,25 @@ async function getSecretAlerts(repos) {
         repo: name,
       })
       .then((alerts) => {
-        for (var i = 0; i < alerts.length; i++) {
-          if (alerts[i].state === "open") {
-            var type = alerts[i].secret_type;
+        alerts.forEach((alert) => {
+          if (alert.state === "open") {
+            var type = alert.secret_type;
             if (!sortedAlerts[type]) {
               sortedAlerts[type] = { count: 1 };
-              sortedAlerts[type]["createdAt"] = alerts[i].created_at;
+              sortedAlerts[type]["createdAt"] = alert.created_at;
             } else {
               sortedAlerts[type]["count"] += 1;
             }
-            summary["secrets"] = (summary["warningsCount"] || 0) + 1;
+            summary["secret"] = (summary["secret"] || 0) + 1;
           }
-        }
+        });
         return sortedAlerts;
       })
       .then(async (sortedAlerts) => {
         const blocks = [];
-        for (const alert in sortedAlerts) {
-          blocks.push(await buildBlocks("secret", alert, sortedAlerts[alert]));
-        }
+        Object.keys(sortedAlerts).forEach((alert) =>
+          blocks.push(buildBlocks("secret", alert, sortedAlerts[alert]))
+        );
         return { repo: name, summary, blocks };
       });
   }).catch((error) => {
@@ -117,7 +113,7 @@ async function getSecretAlerts(repos) {
   });
 }
 
-async function buildBlocks(alertType, name, { count, createdAt, severity }) {
+function buildBlocks(alertType, name, { count, createdAt, severity }) {
   const secretBlock = {
     type: "section",
     fields: [

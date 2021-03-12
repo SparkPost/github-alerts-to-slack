@@ -16,31 +16,29 @@ async function getAlerts(repos) {
   const summary = {};
   return await Promise.map(repos, async ({ org, name }) => {
     const alerts = await getVulnerabilities(org, name);
-    const criticalAlerts = _.filter(alerts, {
-      severity: "critical",
-      dismissed: false,
-    });
-    const highAlerts = _.filter(alerts, {
-      severity: "high",
-      dismissed: false,
-    });
-    const mediumAlerts = _.filter(alerts, {
-      severity: "moderate",
-      dismissed: false,
-    });
+    const criticalAlerts = alerts.filter(
+      (alert) => alert.severity === "critical" && !alert.dismissed
+    );
+    const highAlerts = alerts.filter(
+      (alert) => alert.severity === "high" && !alert.dismissed
+    );
+    const mediumAlerts = alerts.filter(
+      (alert) => alert.severity === "medium" && !alert.dismissed
+    );
+
     // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
     mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
 
     if (criticalAlerts.length > 0) {
-      blocks.push(await buildBlocks(criticalAlerts));
+      blocks.push(buildBlocks(criticalAlerts));
       summary["critical"] = criticalAlerts.length;
     }
     if (highAlerts.length > 0) {
-      blocks.push(await buildBlocks(highAlerts));
+      blocks.push(buildBlocks(highAlerts));
       summary["high"] = highAlerts.length;
     }
     if ("critial" || "high" in summary) {
-      blocks.push(await buildBlocks(mediumAlerts));
+      blocks.push(buildBlocks(mediumAlerts));
       summary["medium"] = mediumAlerts.length;
     }
     return { repo: name, summary, blocks };
