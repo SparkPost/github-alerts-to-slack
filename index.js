@@ -38,7 +38,9 @@ async function doTheThing() {
 
   // insert summary blocks
   results.forEach((repo) => {
-    return repo.blocks.unshift(getAlertsSummary(repo.repo, repo.summary));
+    const summary = repo.summary;
+    delete repo.summary;
+    return repo.blocks.unshift(getAlertsSummary(repo.repo, summary));
   });
 
   blocks.push(results);
