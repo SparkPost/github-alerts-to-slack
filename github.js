@@ -16,7 +16,7 @@ class GitHubClient {
     return `query { 
         search(
           query: "${searchQuery}",
-          type: REPOSITORY, last: 2
+          type: REPOSITORY, last: 50
         ) {
           repositoryCount
           edges {
@@ -32,7 +32,7 @@ class GitHubClient {
   }
 
   async getRepos(searchQuery) {
-    const results = octokit.graphql(this._getReposQuery(searchQuery));
+    const results = await octokit.graphql(this._getReposQuery(searchQuery));
     const repos = _.map(results.search.edges, "node");
     return repos.map((repo) => {
       const [org, name] = repo.nameWithOwner.split("/");
