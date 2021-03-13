@@ -29,8 +29,7 @@ async function doTheThing() {
   // get enabled and disabled dependabot alerts
   const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
   const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
-  console.log(codeQLAlerts);
-  console.log(secretAlerts);
+
   results = mergeBlocksByRepo([
     ...dependabotAlerts,
     ...codeQLAlerts,
@@ -118,16 +117,16 @@ function initialRepoSlackBlock(name, alertsSummary) {
   };
 }
 
-function getAlertsSummary(name, summary) {
+function getAlertsSummary(name, repoSummary) {
   alertsSummary = [];
-  for (var i = 0; i < summary.length; i++) {
-    Object.keys(summary[i]).forEach((severity) => {
-      const count = summary[i][severity];
+  repoSummary.forEach((summary) => {
+    Object.keys(summary).forEach((severity) => {
+      const count = summary[severity];
       if (count > 0) {
         alertsSummary.push(`${count} ${severity}`);
       }
     });
-  }
+  });
   return initialRepoSlackBlock(name, alertsSummary);
 }
 
