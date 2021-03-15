@@ -31,7 +31,7 @@ async function doTheThing() {
   const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
   const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
 
-  results = mergeBlocksByRepo([
+  const results = mergeBlocksByRepo([
     ...dependabotAlerts,
     ...codeQLAlerts,
     ...secretAlerts,
@@ -42,9 +42,12 @@ async function doTheThing() {
     const summary = repo.summary;
     delete repo.summary;
     repo.blocks.unshift(getAlertsSummary(repo.repo, summary));
+    repo.blocks.forEach((block) => {
+      if (!Array.isArray(block)) {
+        blocks.push(block);
+      }
+    });
   });
-
-  blocks.push(results);
 
   if (hasAlertsEnabled.disabled.length > 0) {
     blocks.push({ type: "divider" });
@@ -73,7 +76,7 @@ async function doTheThing() {
     const allBlocks = breakBlocks(blocks);
     // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
     for (let i = 0; i < allBlocks.length; i++) {
-      await slackClient.postMessage({ blocks: allBlocks[i] });
+      await slackClient.postMessage(allBlocks[i]);
     }
   } else {
     console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
@@ -119,7 +122,7 @@ function initialRepoSlackBlock(name, alertsSummary) {
 }
 
 function getAlertsSummary(name, repoSummary) {
-  alertsSummary = [];
+  const alertsSummary = [];
   repoSummary.forEach((summary) => {
     Object.keys(summary).forEach((severity) => {
       const count = summary[severity];
