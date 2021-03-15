@@ -56,9 +56,7 @@ class GitHubClient {
         enabled.push(repo);
       } catch (err) {
         if (err.response.statusCode === 404) {
-          disabled.push(
-            `<https://github.com/${repo.org}/${repo.name}|${repo.org}/${repo.name}>`
-          );
+          disabled.push(`<https://github.com/${repo.org}/${repo.name}>`);
         } else {
           throw new Error(
             `Could not retrieve vulnerability alerts - status code ${err.response.statusCode}`

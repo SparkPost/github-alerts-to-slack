@@ -35,7 +35,7 @@ function getAlerts(repos) {
       blocks.push(buildBlocks(highAlerts));
       summary["high"] = highAlerts.length;
     }
-    if ("critial" || "high" in summary) {
+    if ((mediumAlerts.length > 0 && "critial") || "high" in summary) {
       blocks.push(buildBlocks(mediumAlerts));
       summary["medium"] = mediumAlerts.length;
     }

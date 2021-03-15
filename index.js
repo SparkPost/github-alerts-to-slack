@@ -7,7 +7,7 @@ const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
-const searchQuery = "org:SparkPost topic:team-sa archived:false"; //process.env.GITHUB_QUERY;
+const searchQuery = "org:SparkPost topic:team-sa archived:false is:private"; //process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
 const slackClient = new SlackClient(webhook);
@@ -21,6 +21,7 @@ async function doTheThing() {
         text: `:wave: GitHub Security Alerts Report\n\nThe following repositories have open vulnerability alerts and need your attention.`,
       },
     },
+    { type: "divider" },
   ];
 
   const repos = await githubClient.getRepos(searchQuery);
@@ -40,7 +41,7 @@ async function doTheThing() {
   results.forEach((repo) => {
     const summary = repo.summary;
     delete repo.summary;
-    return repo.blocks.unshift(getAlertsSummary(repo.repo, summary));
+    repo.blocks.unshift(getAlertsSummary(repo.repo, summary));
   });
 
   blocks.push(results);
