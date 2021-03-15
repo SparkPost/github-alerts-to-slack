@@ -9,6 +9,7 @@
     "got": "^11.3.0",
     "graphql-request": "^1.8.2",
     "lodash": "^4.17.15",
+    "moment": "^2.29.1",
     "octokit": "^1.0.0-hello-world"
   },
   "devDependencies": {
