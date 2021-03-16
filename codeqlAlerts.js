@@ -62,9 +62,11 @@ function getCodeAlerts(repos) {
 
 function filterCodeAlerts(alerts) {
   return alerts.filter((alert) => {
-    alert.rule.severity !== "note" &&
+    return (
+      alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
-      moment(alert.created_at).add(14, "days") < moment();
+      moment(alert.created_at).add(14, "days") < moment()
+    );
   });
 }
 
@@ -114,11 +116,11 @@ function buildBlocks(alertType, name, { count, createdAt, severity }) {
     fields: [
       {
         type: "mrkdwn",
-        text: `*Secret ${name} (Occurrences)*\n (${count})`,
+        text: `*${name}* x ${count}`,
       },
       {
         type: "mrkdwn",
-        text: `*Created on*\n${createdAt}`,
+        text: `*Created on* ${createdAt}`,
       },
     ],
   };
@@ -128,7 +130,7 @@ function buildBlocks(alertType, name, { count, createdAt, severity }) {
     fields: [
       {
         type: "mrkdwn",
-        text: `*Code (Severity Level)*\n${name} x ${count} (${severity})`,
+        text: `*${name} x ${count} \nSeverity Level*: (${severity})`,
       },
       {
         type: "mrkdwn",

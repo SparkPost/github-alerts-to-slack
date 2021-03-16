@@ -11,8 +11,8 @@ const octokit = new Octokit({
 
 function getAlerts(repos) {
   const blocks = [];
-  const summary = {};
   return Promise.map(repos, async ({ org, name }) => {
+    const summary = {};
     const alerts = await getVulnerabilities(org, name);
     const criticalAlerts = alerts.filter(
       (alert) => alert.severity === "critical" && !alert.dismissed
@@ -35,7 +35,7 @@ function getAlerts(repos) {
       blocks.push(buildBlocks(highAlerts));
       summary["high"] = highAlerts.length;
     }
-    if ((mediumAlerts.length > 0 && "critial") || "high" in summary) {
+    if (mediumAlerts.length > 0 && ("critial" || "high" in summary)) {
       blocks.push(buildBlocks(mediumAlerts));
       summary["medium"] = mediumAlerts.length;
     }

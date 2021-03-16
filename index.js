@@ -1,9 +1,10 @@
+"use strict";
+
 const GithubClient = require("./github");
 const SlackClient = require("./slack");
 const _ = require("lodash");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
-const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -27,26 +28,29 @@ async function doTheThing() {
   const repos = await githubClient.getRepos(searchQuery);
   const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
+
   // get enabled and disabled dependabot alerts
   const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
   const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
 
   const results = mergeBlocksByRepo([
     ...dependabotAlerts,
-    ...codeQLAlerts,
     ...secretAlerts,
+    ...codeQLAlerts,
   ]);
 
   // insert summary blocks
   results.forEach((repo) => {
-    const summary = repo.summary;
-    delete repo.summary;
-    repo.blocks.unshift(getAlertsSummary(repo.repo, summary));
-    repo.blocks.forEach((block) => {
-      if (!Array.isArray(block)) {
-        blocks.push(block);
-      }
-    });
+    blocks.push({ type: "divider" });
+    const summaryBlock = getAlertsSummary(repo.repo, repo.summary);
+    if (summaryBlock) {
+      repo.blocks.unshift(summaryBlock);
+      repo.blocks.forEach((block) => {
+        if (!Array.isArray(block)) {
+          blocks.push(block);
+        }
+      });
+    }
   });
 
   if (hasAlertsEnabled.disabled.length > 0) {
@@ -76,7 +80,7 @@ async function doTheThing() {
     const allBlocks = breakBlocks(blocks);
     // await will work with oldschool loops, but nothing that requires a callback like array.forEach()
     for (let i = 0; i < allBlocks.length; i++) {
-      await slackClient.postMessage(allBlocks[i]);
+      await slackClient.postMessage({ blocks: allBlocks[i] });
     }
   } else {
     console.log(`Slack blocks: ${JSON.stringify(blocks, null, 2)}`);
@@ -104,21 +108,23 @@ function mergeBlocksByRepo(zipRepos) {
 }
 
 function initialRepoSlackBlock(name, alertsSummary) {
-  return {
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
-        ", "
-      )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
-    },
-    accessory: {
-      type: "image",
-      image_url:
-        "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-      alt_text: "github",
-    },
-  };
+  if (alertsSummary.length > 0) {
+    return {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
+          ", "
+        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
+      },
+      accessory: {
+        type: "image",
+        image_url:
+          "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
+        alt_text: "github",
+      },
+    };
+  }
 }
 
 function getAlertsSummary(name, repoSummary) {
