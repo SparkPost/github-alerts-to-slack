@@ -130,7 +130,7 @@ function buildBlocks(alertType, name, { count, createdAt, severity }) {
     fields: [
       {
         type: "mrkdwn",
-        text: `*${name} x ${count} \nSeverity Level*: (${severity})`,
+        text: `*${name}* x ${count} \n*Severity Level*: (${severity})`,
       },
       {
         type: "mrkdwn",
