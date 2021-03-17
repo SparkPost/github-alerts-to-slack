@@ -1,11 +1,14 @@
+"use strict";
+
 const GithubClient = require("./github");
 const SlackClient = require("./slack");
 const _ = require("lodash");
-const Promise = require("bluebird");
+const dependabot = require("./dependabotAlerts");
+const codeQL = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
-const searchQuery = process.env.GITHUB_QUERY;
+const searchQuery = "org:SparkPost topic:team-sa archived:false is:private"; //process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
 const slackClient = new SlackClient(webhook);
@@ -19,56 +22,44 @@ async function doTheThing() {
         text: `:wave: GitHub Security Alerts Report\n\nThe following repositories have open vulnerability alerts and need your attention.`,
       },
     },
+    { type: "divider" },
   ];
 
-  let disabledRepos = [];
-
   const repos = await githubClient.getRepos(searchQuery);
+  const codeQLAlerts = await codeQL.getCodeAlerts(repos);
+  const secretAlerts = await codeQL.getSecretAlerts(repos);
 
-  await Promise.map(repos, async ({ name, org }) => {
-    const hasAlertsEnabled = await githubClient.hasAlertsEnabled(org, name);
-    if (!hasAlertsEnabled) {
-      disabledRepos.push(`<https://github.com/${org}/${name}|${org}/${name}>`);
-    } else {
-      const alerts = await githubClient.getVulnerabilities(org, name);
-      const criticalAlerts = _.filter(alerts, {
-        severity: "critical",
-        dismissed: false,
-      });
-      const highAlerts = _.filter(alerts, {
-        severity: "high",
-        dismissed: false,
-      });
-      const mediumAlerts = _.filter(alerts, {
-        severity: "moderate",
-        dismissed: false,
-      });
+  // get enabled and disabled dependabot alerts
+  const hasAlertsEnabled = await githubClient.hasAlertsEnabled(repos);
+  const dependabotAlerts = await dependabot.getAlerts(hasAlertsEnabled.enabled);
 
-      // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
-      mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
+  const results = mergeBlocksByRepo([
+    ...dependabotAlerts,
+    ...secretAlerts,
+    ...codeQLAlerts,
+  ]);
 
-      if (criticalAlerts.length > 0 || highAlerts.length > 0) {
-        blocks.push({ type: "divider" });
-        blocks = blocks.concat(
-          formatAlertsForSlack({
-            org,
-            name,
-            criticalAlerts,
-            highAlerts,
-            mediumAlerts,
-          })
-        );
-      }
+  // insert summary blocks
+  results.forEach((repo) => {
+    blocks.push({ type: "divider" });
+    const summaryBlock = getAlertsSummary(repo.repo, repo.summary);
+    if (summaryBlock) {
+      repo.blocks.unshift(summaryBlock);
+      repo.blocks.forEach((block) => {
+        if (!Array.isArray(block)) {
+          blocks.push(block);
+        }
+      });
     }
   });
 
-  if (disabledRepos.length > 0) {
+  if (hasAlertsEnabled.disabled.length > 0) {
     blocks.push({ type: "divider" });
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `The following do not have alerts enabled: ${disabledRepos.join(
+        text: `The following do not have alerts enabled: ${hasAlertsEnabled.disabled.join(
           ", "
         )}`,
       },
@@ -96,32 +87,35 @@ async function doTheThing() {
   }
 }
 
-function formatAlertsForSlack({
-  org,
-  name,
-  criticalAlerts,
-  highAlerts,
-  mediumAlerts,
-}) {
-  const alertsSummary = [];
-  if (criticalAlerts.length > 0) {
-    alertsSummary.push(`${criticalAlerts.length} critical`);
-  }
-  if (highAlerts.length > 0) {
-    alertsSummary.push(`${highAlerts.length} high`);
-  }
-  if (mediumAlerts.length > 0) {
-    alertsSummary.push(`${mediumAlerts.length} medium`);
-  }
+function mergeBlocksByRepo(zipRepos) {
+  return zipRepos.reduce(function (zippedRepos, obj) {
+    const repo = zippedRepos.reduce(function (i, item, j) {
+      return item.repo === obj.repo ? j : i;
+    }, -1);
+    if (repo >= 0) {
+      zippedRepos[repo].blocks = zippedRepos[repo].blocks.concat(obj.blocks);
+      zippedRepos[repo].summary = zippedRepos[repo].summary.concat(obj.summary);
+    } else {
+      const mergedBlocks = {
+        repo: obj.repo,
+        blocks: [obj.blocks],
+        summary: [obj.summary],
+      };
+      zippedRepos = zippedRepos.concat([mergedBlocks]);
+    }
+    return zippedRepos;
+  }, []);
+}
 
-  const blocks = [
-    {
+function initialRepoSlackBlock(name, alertsSummary) {
+  if (alertsSummary.length > 0) {
+    return {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*<https://github.com/${org}/${name}|${org}/${name}>*\n${alertsSummary.join(
+        text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
           ", "
-        )}\n<https://github.com/${org}/${name}/network/alerts|View all>`,
+        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
       },
       accessory: {
         type: "image",
@@ -129,36 +123,21 @@ function formatAlertsForSlack({
           "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
         alt_text: "github",
       },
-    },
-  ];
-  criticalAlerts.forEach((criticalAlert) => {
-    blocks.push(formatAlertForSlack(criticalAlert));
-  });
-  highAlerts.forEach((highAlert) => {
-    blocks.push(formatAlertForSlack(highAlert));
-  });
-  mediumAlerts.forEach((mediumAlert) => {
-    blocks.push(formatAlertForSlack(mediumAlert));
-  });
-
-  return blocks;
+    };
+  }
 }
 
-function formatAlertForSlack({ id, package_name, severity, created_at }) {
-  return {
-    type: "section",
-    block_id: `section-${id}`,
-    fields: [
-      {
-        type: "mrkdwn",
-        text: `*Package (Severity Level)*\n${package_name} (${severity})`,
-      },
-      {
-        type: "mrkdwn",
-        text: `*Created on*\n${created_at}`,
-      },
-    ],
-  };
+function getAlertsSummary(name, repoSummary) {
+  const alertsSummary = [];
+  repoSummary.forEach((summary) => {
+    Object.keys(summary).forEach((severity) => {
+      const count = summary[severity];
+      if (count > 0) {
+        alertsSummary.push(`${count} ${severity}`);
+      }
+    });
+  });
+  return initialRepoSlackBlock(name, alertsSummary);
 }
 
 /**
@@ -185,6 +164,6 @@ function breakBlocks(blocks) {
 }
 
 return doTheThing().catch((err) => {
-  console.log(`It failed :( - ${err.message})`);
+  console.log(`It failed :( - ${err})`);
   process.exit(-1);
 });
