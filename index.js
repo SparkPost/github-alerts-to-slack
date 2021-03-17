@@ -5,6 +5,7 @@ const SlackClient = require("./slack");
 const _ = require("lodash");
 const dependabot = require("./dependabotAlerts");
 const codeQL = require("./codeqlAlerts");
+const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
@@ -46,7 +47,11 @@ async function doTheThing() {
     if (summaryBlock) {
       repo.blocks.unshift(summaryBlock);
       repo.blocks.forEach((block) => {
-        if (!Array.isArray(block)) {
+        if (Array.isArray(block)) {
+          block.forEach((b) => {
+            blocks.push(b);
+          });
+        } else {
           blocks.push(block);
         }
       });
