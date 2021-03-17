@@ -10,8 +10,8 @@ const octokit = new Octokit({
 });
 
 function getAlerts(repos) {
-  const blocks = [];
   return Promise.map(repos, async ({ org, name }) => {
+    const blocks = [];
     const summary = {};
     const alerts = await getVulnerabilities(org, name);
     const criticalAlerts = alerts.filter(
@@ -28,15 +28,21 @@ function getAlerts(repos) {
     mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
 
     if (criticalAlerts.length > 0) {
-      blocks.push(buildBlocks(criticalAlerts));
+      criticalAlerts.forEach((alert) => {
+        blocks.push(buildBlocks(alert));
+      });
       summary["critical"] = criticalAlerts.length;
     }
     if (highAlerts.length > 0) {
-      blocks.push(buildBlocks(highAlerts));
+      highAlerts.forEach((alert) => {
+        blocks.push(buildBlocks(alert));
+      });
       summary["high"] = highAlerts.length;
     }
     if (mediumAlerts.length > 0 && ("critial" || "high" in summary)) {
-      blocks.push(buildBlocks(mediumAlerts));
+      mediumAlerts.forEach((alert) => {
+        blocks.push(buildBlocks(alert));
+      });
       summary["medium"] = mediumAlerts.length;
     }
     return { repo: name, summary, blocks };
@@ -90,25 +96,21 @@ const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
     }`;
 };
 
-function buildBlocks(alerts) {
-  const blocks = [];
-  alerts.forEach((alert) => {
-    blocks.push({
-      type: "section",
-      block_id: `section-${alert.id}`,
-      fields: [
-        {
-          type: "mrkdwn",
-          text: `*Package (Severity Level)*\n${alert.packageName} (${alert.severity})`,
-        },
-        {
-          type: "mrkdwn",
-          text: `*Created on*\n${alert.createdAt}`,
-        },
-      ],
-    });
-  });
-  return blocks;
+function buildBlocks(alert) {
+  return {
+    type: "section",
+    block_id: `section-${alert.id}`,
+    fields: [
+      {
+        type: "mrkdwn",
+        text: `*Package (Severity Level)*\n${alert.packageName} (${alert.severity})`,
+      },
+      {
+        type: "mrkdwn",
+        text: `*Created on*\n${alert.createdAt}`,
+      },
+    ],
+  };
 }
 
 module.exports = {
