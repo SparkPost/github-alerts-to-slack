@@ -2,8 +2,7 @@ const got = require("got");
 
 class SlackClient {
   constructor(webhook) {
-    this.webhook =
-      "https://hooks.slack.com/services/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";
+    this.webhook = webhook;
   }
 
   async postMessage(json) {

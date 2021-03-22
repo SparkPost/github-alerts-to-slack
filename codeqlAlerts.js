@@ -70,7 +70,6 @@ function filterCodeAlerts(alerts) {
   });
 }
 
-// Secret alerts can be retrived on private repos
 // .number, .html_url, .state, .secret_type, .secret, .resolution, .resolved_by, .resolved_at]
 function getSecretAlerts(repos) {
   return Promise.map(repos, ({ name, org }) => {
