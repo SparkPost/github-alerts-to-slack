@@ -4,6 +4,8 @@
   "description": "This script is designed to alert on critical and high vulnerabilities found in a list of GitHub repositories. Currently, GitHub does not offer vulnerability reporting across an organization. This script is designed to be a quick way to list any open issues in a single spot.",
   "main": "index.js",
   "dependencies": {
+    "@octokit/core": "^3.3.1",
+    "@octokit/request": "^5.4.14",
     "@octokit/rest": "^18.3.5",
     "bluebird": "^3.7.2",
     "dotenv": "^8.2.0",

@@ -10,6 +10,8 @@ const Promise = require("bluebird");
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
+  userAgent: "secrets v1.2.3",
+
   // Set GitHub Auth Token in environment variable
 });
 
@@ -72,7 +74,7 @@ function filterCodeAlerts(alerts) {
 
 // .number, .html_url, .state, .secret_type, .secret, .resolution, .resolved_by, .resolved_at]
 function getSecretAlerts(repos) {
-  return Promise.map(repos, ({ name, org }) => {
+  const repoAlerts = Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
@@ -98,15 +100,26 @@ function getSecretAlerts(repos) {
       })
       .then((sortedAlerts) => {
         const blocks = [];
-        Object.keys(sortedAlerts).forEach((alert) =>
-          blocks.push(buildBlocks("secret", alert, sortedAlerts[alert]))
-        );
+        const alerts = Object.keys(sortedAlerts);
+        alerts.forEach((alert) => {
+          blocks.push(buildBlocks("secret", alert, sortedAlerts[alert]));
+          console.log(blocks);
+        });
         return { repo: name, summary, blocks };
+      })
+      .catch((err) => {
+        if (err.status === 404) {
+          // secret alerts does not support public repos
+          return;
+        }
       });
-  }).catch((error) => {
-    console.error(
-      `Failed for ${org}/${name}\n${error.message}\n${error.documentation_url}`
+  }).catch((err) => {
+    throw new Error(
+      `Could not retrieve vulnerability alerts - status code ${err.status}`
     );
+  });
+  return repoAlerts.filter(function (alert) {
+    return alert != null;
   });
 }
 
