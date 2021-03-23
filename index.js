@@ -9,7 +9,7 @@ const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.SLACK_WEBHOOK;
-const searchQuery = "org:SparkPost topic:team-sa archived:false is:private"; //process.env.GITHUB_QUERY;
+const searchQuery = process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
 const slackClient = new SlackClient(webhook);
