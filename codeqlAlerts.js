@@ -57,7 +57,7 @@ function getCodeAlerts(repos) {
       });
   }).catch((error) => {
     console.error(
-      `Failed for ${org}/${name}\n${error.message}\n${error.documentation_url}`
+     error
     );
   });
 }
