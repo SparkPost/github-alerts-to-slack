@@ -42,9 +42,9 @@ async function doTheThing() {
 
   // insert summary blocks
   results.forEach((repo) => {
-    blocks.push({ type: "divider" });
     const summaryBlock = getAlertsSummary(repo.repo, repo.summary);
     if (summaryBlock) {
+      blocks.push({ type: "divider" });
       repo.blocks.unshift(summaryBlock);
       repo.blocks.forEach((block) => {
         if (Array.isArray(block)) {
