@@ -19,7 +19,7 @@ const [, , ...args] = process.argv;
 
 //  .number, .created_at, .url, .html_url, .state, .dismissed_by.login, .dismissed_at, .dismissed_reason, .rule.id, .rule.severity, .rule.description, .tool.name, .most_recent_instance.classifications[]]
 function getCodeAlerts(repos) {
-  return Promise.map(repos, ({ name, org }) => {
+  const codeAlerts = Promise.map(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
@@ -54,11 +54,22 @@ function getCodeAlerts(repos) {
           buildBlocks("code", alert, sortedAlerts[alert])
         );
         return { repo: name, summary, blocks };
+      })
+      .catch((err) => {
+        if (err.status === 403) {
+          /* Advanced Security must be enabled for a repository to use code scanning.
+             https://docs.github.com/rest/reference/code-scanning#list-code-scanning-alerts-for-a-repository
+          */
+          return;
+        }
       });
-  }).catch((error) => {
-    console.error(
-     error
+  }).catch((err) => {
+    throw new Error(
+      `Could not retrieve code scanning alerts - status code ${err.status}`
     );
+  });
+  return codeAlerts.filter(function (alert) {
+    return alert != null;
   });
 }
 
