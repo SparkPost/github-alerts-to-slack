@@ -19,7 +19,8 @@ const [, , ...args] = process.argv;
 
 //  .number, .created_at, .url, .html_url, .state, .dismissed_by.login, .dismissed_at, .dismissed_reason, .rule.id, .rule.severity, .rule.description, .tool.name, .most_recent_instance.classifications[]]
 function getCodeAlerts(repos) {
-  return Promise.map(repos, ({ name, org }) => {
+  const codeAlerts = [];
+  return Promise.each(repos, ({ name, org }) => {
     const sortedAlerts = {};
     const summary = {};
 
@@ -53,13 +54,16 @@ function getCodeAlerts(repos) {
         const blocks = Object.keys(sortedAlerts).map((alert) =>
           buildBlocks("code", alert, sortedAlerts[alert])
         );
-        return { repo: name, summary, blocks };
+        codeAlerts.push({ repo: name, summary, blocks });
+      })
+      .catch((error) => {
+        // if it's a 403, that means code scanning was not enabled on this repo.
+        // See https://docs.github.com/rest/reference/code-scanning#list-code-scanning-alerts-for-a-repository
+        if (error.status !== 403) {
+          console.error(error);
+        }
       });
-  }).catch((error) => {
-    console.error(
-     error
-    );
-  });
+  }).then(() => codeAlerts);
 }
 
 function filterCodeAlerts(alerts) {
@@ -103,7 +107,6 @@ function getSecretAlerts(repos) {
         const alerts = Object.keys(sortedAlerts);
         alerts.forEach((alert) => {
           blocks.push(buildBlocks("secret", alert, sortedAlerts[alert]));
-          console.log(blocks);
         });
         return { repo: name, summary, blocks };
       })
