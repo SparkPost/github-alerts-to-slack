@@ -2,6 +2,7 @@ const _ = require("lodash");
 const got = require("got");
 
 const { Octokit } = require("@octokit/rest");
+const Promise = require("bluebird");
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
   // Set GitHub Auth Token in environment variable
@@ -43,7 +44,7 @@ class GitHubClient {
   async hasAlertsEnabled(repos) {
     const enabled = [];
     const disabled = [];
-    repos.forEach(async (repo) => {
+    await Promise.each(repos, async (repo) => {
       const repoUrl = `https://api.github.com/repos/${repo.org}/${repo.name}`;
       try {
         await got(`${repoUrl}/vulnerability-alerts`, {
