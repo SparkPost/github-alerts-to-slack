@@ -58,8 +58,7 @@ function getCodeAlerts(repos) {
       })
       .catch((error) => {
         // if it's a 403, that means code scanning was not enabled on this repo.
-        // it would be nice if we could check if it's enabled first before bothering
-        // to call this endpoint...
+        // See https://docs.github.com/rest/reference/code-scanning#list-code-scanning-alerts-for-a-repository
         if (error.status !== 403) {
           console.error(error);
         }
