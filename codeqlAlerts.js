@@ -71,6 +71,7 @@ function filterCodeAlerts(alerts) {
     return (
       alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
+      alert.most_recent_instance.state === "open" && 
       moment(alert.created_at).add(14, "days") < moment()
     );
   });
