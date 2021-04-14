@@ -32,6 +32,8 @@ function getCodeAlerts(repos) {
         const filteredAlerts = filterCodeAlerts(alerts);
 
         filteredAlerts.forEach((alert) => {
+          if (alert.most_recent_instance.state !== "open") return;
+
           var rule = alert.rule.description;
           if (!sortedAlerts[rule]) {
             sortedAlerts[rule] = { count: 1 };
