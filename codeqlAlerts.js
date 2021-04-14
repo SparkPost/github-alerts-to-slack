@@ -33,8 +33,6 @@ function getCodeAlerts(repos) {
         const filteredAlerts = filterCodeAlerts(alerts);
 
         filteredAlerts.forEach((alert) => {
-          if (alert.most_recent_instance.state !== "open") return;
-
           var rule = alert.rule.description;
           if (!sortedAlerts[rule]) {
             sortedAlerts[rule] = { count: 1 };
@@ -73,6 +71,7 @@ function filterCodeAlerts(alerts) {
     return (
       alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
+      alert.most_recent_instance.state === "open" && 
       moment(alert.created_at).add(14, "days") < moment()
     );
   });
