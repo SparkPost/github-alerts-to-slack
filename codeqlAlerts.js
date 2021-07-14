@@ -71,7 +71,7 @@ function filterCodeAlerts(alerts) {
     return (
       alert.rule.severity !== "note" &&
       alert.most_recent_instance.classifications !== "test" &&
-      alert.most_recent_instance.state === "open" && 
+      alert.most_recent_instance.state === "open" &&
       moment(alert.created_at).add(14, "days") < moment()
     );
   });
@@ -128,16 +128,29 @@ function getSecretAlerts(repos) {
 }
 
 function buildBlocks(alertType, name, { count, createdAt, severity }) {
+  let due = "";
+  const timeline = {
+    secret: 14,
+    warning: 30,
+    error: 60,
+  };
+  const currentDate = moment();
+  const dueDate = moment(createdAt).add(timeline[severity], "days");
+  if (dueDate < currentDate) {
+    due = "Past due";
+  } else {
+    due = `Due in ${dueDate.diff(currentDate, "days")} days`;
+  }
   const secretBlock = {
     type: "section",
     fields: [
       {
         type: "mrkdwn",
-        text: `*${name}* x ${count}`,
+        text: `${name} x ${count}`,
       },
       {
         type: "mrkdwn",
-        text: `*Created on* ${createdAt}`,
+        text: `*${due}*`,
       },
     ],
   };
@@ -147,11 +160,11 @@ function buildBlocks(alertType, name, { count, createdAt, severity }) {
     fields: [
       {
         type: "mrkdwn",
-        text: `*${name}* x ${count} \n*Severity Level*: (${severity})`,
+        text: `${name} x ${count} - ${severity}`,
       },
       {
         type: "mrkdwn",
-        text: `*Created on*\n${createdAt}`,
+        text: `*${due}*`,
       },
     ],
   };

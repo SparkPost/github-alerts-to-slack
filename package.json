@@ -7,13 +7,19 @@
     "@octokit/core": "^3.3.1",
     "@octokit/request": "^5.4.14",
     "@octokit/rest": "^18.3.5",
+    "@slack/bolt": "^3.4.0",
+    "@slack/socket-mode": "^1.1.0",
+    "@slack/web-api": "^6.2.4",
     "bluebird": "^3.7.2",
-    "dotenv": "^8.2.0",
+    "dotenv": "^8.6.0",
     "got": "^11.3.0",
-    "graphql-request": "^1.8.2",
+    "graphql-request": "^3.4.0",
     "lodash": "^4.17.15",
     "moment": "^2.29.1",
-    "octokit": "^1.0.0-hello-world"
+    "node-fetch": "^2.6.1",
+    "nodemon": "^2.0.12",
+    "octokit": "^1.0.0-hello-world",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "husky": "^4.2.5",
@@ -22,7 +28,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
@@ -32,6 +39,6 @@
     }
   },
   "engines": {
-    "node": "10.x"
+    "node": "16.x"
   }
 }

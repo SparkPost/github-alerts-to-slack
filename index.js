@@ -8,11 +8,10 @@ const codeQL = require("./codeqlAlerts");
 const codeqlAlerts = require("./codeqlAlerts");
 
 const token = process.env.GITHUB_TOKEN;
-const webhook = process.env.SLACK_WEBHOOK;
 const searchQuery = process.env.GITHUB_QUERY;
 
 const githubClient = new GithubClient(token);
-const slackClient = new SlackClient(webhook);
+const slackClient = new SlackClient();
 
 async function doTheThing() {
   let blocks = [
@@ -26,6 +25,7 @@ async function doTheThing() {
     { type: "divider" },
   ];
 
+  await slackClient;
   const repos = await githubClient.getRepos(searchQuery);
   const codeQLAlerts = await codeQL.getCodeAlerts(repos);
   const secretAlerts = await codeQL.getSecretAlerts(repos);
@@ -42,17 +42,25 @@ async function doTheThing() {
 
   // insert summary blocks
   results.forEach((repo) => {
-    const summaryBlock = getAlertsSummary(repo.repo, repo.summary);
-    if (summaryBlock) {
+    const summaryBlock = getAlertsSummary(
+      repo.repo,
+      repo.summary,
+      repo.mergeable
+    );
+    if (Object.keys(summaryBlock).length) {
       blocks.push({ type: "divider" });
       repo.blocks.unshift(summaryBlock);
       repo.blocks.forEach((block) => {
         if (Array.isArray(block)) {
           block.forEach((b) => {
-            blocks.push(b);
+            if (b) {
+              blocks.push(b);
+            }
           });
         } else {
-          blocks.push(block);
+          if (block) {
+            blocks.push(block);
+          }
         }
       });
     }
@@ -105,6 +113,7 @@ function mergeBlocksByRepo(zipRepos) {
         repo: obj.repo,
         blocks: [obj.blocks],
         summary: [obj.summary],
+        mergeable: obj.mergeable || false,
       };
       zippedRepos = zippedRepos.concat([mergedBlocks]);
     }
@@ -112,9 +121,10 @@ function mergeBlocksByRepo(zipRepos) {
   }, []);
 }
 
-function initialRepoSlackBlock(name, alertsSummary) {
+function initialRepoSlackBlock(name, alertsSummary, mergeable) {
+  let section = {};
   if (alertsSummary.length > 0) {
-    return {
+    section = {
       type: "section",
       text: {
         type: "mrkdwn",
@@ -122,17 +132,25 @@ function initialRepoSlackBlock(name, alertsSummary) {
           ", "
         )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
       },
-      accessory: {
-        type: "image",
-        image_url:
-          "https://user-images.githubusercontent.com/10406825/85333522-ba846b80-b4a7-11ea-9774-46fa8ca693a4.png",
-        alt_text: "github",
-      },
     };
+    if (mergeable) {
+      section["accessory"] = {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "Acknowledge",
+        },
+        style: "danger",
+        value: `${name}AcknowledgeButton`,
+        action_id: "acknowledge_button",
+        url: `https://www.github.com/sparkpost/${name}/pulls`,
+      };
+    }
   }
+  return section;
 }
 
-function getAlertsSummary(name, repoSummary) {
+function getAlertsSummary(name, repoSummary, mergeable) {
   const alertsSummary = [];
   repoSummary.forEach((summary) => {
     Object.keys(summary).forEach((severity) => {
@@ -142,7 +160,7 @@ function getAlertsSummary(name, repoSummary) {
       }
     });
   });
-  return initialRepoSlackBlock(name, alertsSummary);
+  return initialRepoSlackBlock(name, alertsSummary, mergeable);
 }
 
 /**
