@@ -23,6 +23,9 @@ function getAlerts(repos) {
     const mediumAlerts = alerts.filter(
       (alert) => alert.severity === "moderate" && !alert.dismissed
     );
+    const lowAlerts = alerts.filter(
+      (alert) => alert.severity === "low" && !alert.dismissed
+    );
 
     // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
     mediumAlerts.forEach((mediumAlert) => (mediumAlert.severity = "medium"));
@@ -39,11 +42,17 @@ function getAlerts(repos) {
       });
       summary["high"] = highAlerts.length;
     }
-    if (mediumAlerts.length > 0 && (summary.critical || summary.high)) {
+    if (mediumAlerts.length > 0) {
       mediumAlerts.forEach((alert) => {
         blocks.push(buildBlocks(alert));
       });
       summary["medium"] = mediumAlerts.length;
+    }
+    if (lowAlerts.length > 0) {
+      lowAlerts.forEach((alert) => {
+        blocks.push(buildBlocks(alert));
+      });
+      summary["low"] = lowAlerts.length;
     }
     return { repo: name, summary, blocks };
   });
