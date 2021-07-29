@@ -59,7 +59,6 @@ function getAlerts(repos) {
       });
       summary["high"] = highAlerts.length;
     }
-    // if (mediumAlerts.length > 0 && (summary.critical || summary.high)) {
     if (mediumAlerts.length > 0) {
       mediumAlerts.forEach((alert) => {
         blocks.push(
@@ -149,7 +148,6 @@ const createCombinedPR = async (org, name, prShaList, prIds) => {
               githubClient
                 .createPullRequest(org, name, defaultBranch.data.name)
                 .then((yeah) => {
-                  console.log("prIds", yean);
                   prIds.forEach((id) => {
                     // githubClient.closePullRequest(org, name, id)
                   });
