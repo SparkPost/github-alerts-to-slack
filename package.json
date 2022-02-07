@@ -12,6 +12,7 @@
     "got": "^11.3.0",
     "lodash": "^4.17.15",
     "moment": "^2.29.1",
+    "node-fetch": ">=2.6.7",
     "octokit": "^1.0.0-hello-world"
   },
   "devDependencies": {
