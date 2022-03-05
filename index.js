@@ -130,22 +130,10 @@ function initialRepoSlackBlock(name, alertsSummary, mergeable) {
         type: "mrkdwn",
         text: `*<https://github.com/sparkpost/${name}|sparkpost/${name}>*\n${alertsSummary.join(
           ", "
-        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>`,
+        )}\n<https://github.com/sparkpost/${name}/network/alerts|View all>
+          \n ${mergeable ? "PR ready for review! -  " : ""} `,
       },
     };
-    if (mergeable) {
-      section["accessory"] = {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Acknowledge",
-        },
-        style: "danger",
-        value: `${name}AcknowledgeButton`,
-        action_id: "acknowledge_button",
-        url: `https://www.github.com/sparkpost/${name}/pulls`,
-      };
-    }
   }
   return section;
 }

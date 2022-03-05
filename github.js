@@ -149,7 +149,7 @@ class GitHubClient {
   }
 
   // create pull request
-  async createPullRequest(owner, repo, base) {
+  async createPullRequest(owner, repo, defaultBranch) {
     try {
       const t = await octokit.pulls.create({
         owner,

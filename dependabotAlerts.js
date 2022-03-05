@@ -165,7 +165,7 @@ const createCombinedPR = async (org, name, prShaList, prIds) => {
   });
 };
 
-function buildBlocks(alert, mergeable) {
+function buildBlocks(alert) {
   let due = "";
   const timeline = {
     critical: 14,
@@ -187,9 +187,7 @@ function buildBlocks(alert, mergeable) {
     fields: [
       {
         type: "mrkdwn",
-        text: `${mergeable ? ":ship: " : ""}${alert.packageName} - ${
-          alert.severity
-        }`,
+        text: `${alert.packageName} - ${alert.severity}`,
       },
       {
         type: "mrkdwn",
