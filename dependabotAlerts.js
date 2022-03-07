@@ -15,16 +15,18 @@ function getAlerts(repos) {
     const summary = {};
     const alerts = await getVulnerabilities(org, name);
     const criticalAlerts = alerts.filter(
-      (alert) => alert.severity === "critical" && !alert.dismissed
+      (alert) =>
+        alert.severity === "critical" && !alert.dismissed && !alert.fixed
     );
     const highAlerts = alerts.filter(
-      (alert) => alert.severity === "high" && !alert.dismissed
+      (alert) => alert.severity === "high" && !alert.dismissed && !alert.fixed
     );
     const mediumAlerts = alerts.filter(
-      (alert) => alert.severity === "moderate" && !alert.dismissed
+      (alert) =>
+        alert.severity === "moderate" && !alert.dismissed && !alert.fixed
     );
     const lowAlerts = alerts.filter(
-      (alert) => alert.severity === "low" && !alert.dismissed
+      (alert) => alert.severity === "low" && !alert.dismissed && !alert.fixed
     );
 
     // Dependabot calls these "moderate", but SparkPost categorizes these as "medium"
@@ -70,6 +72,7 @@ const getVulnerabilities = async (owner, repo) => {
       description: alert.securityAdvisory.description,
       packageName: alert.securityVulnerability.package.name,
       dismissed: !!alert.dismissReason,
+      fixed: !!alert.fixReason,
     };
   });
 };
@@ -85,6 +88,7 @@ const getVulnerabilityAlertQuery = (owner, repo, limit = 50) => {
               vulnerableRequirements
               vulnerableManifestFilename
               dismissReason 
+              fixReason
               securityAdvisory {
                 description
                 ghsaId
