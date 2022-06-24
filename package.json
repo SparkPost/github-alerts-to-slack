@@ -9,7 +9,7 @@
     "@octokit/rest": "^18.3.5",
     "bluebird": "^3.7.2",
     "dotenv": "^8.2.0",
-    "got": "^11.3.0",
+    "got": "^11.8.5",
     "graphql-request": "^1.8.2",
     "lodash": "^4.17.15",
     "moment": "^2.29.1",
