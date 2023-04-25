@@ -16,7 +16,7 @@
     "octokit": "^1.0.0-hello-world"
   },
   "devDependencies": {
-    "husky": "^4.2.5",
+    "husky": "^8.0.3",
     "prettier": "^2.0.5",
     "pretty-quick": "^2.0.1"
   },
